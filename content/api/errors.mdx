@@ -8,7 +8,8 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | `401` | Missing or invalid authentication | Check your API key |
 | `403` | Insufficient scope or access | Check key scopes and organization membership |
 | `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
-| `409` | Duplicate or conflicting operation | Inspect the original request before resubmitting |
+| `409` | Conflicting embed input or duplicate detect operation | Reuse the original embed input, or inspect the detect operation |
+| `410` | Saved embedding result expired | Use your saved PNG; a new operation requires a new key |
 | `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |
@@ -21,16 +22,19 @@ must contain a non-empty JSON object, not an array or plain string.
 
 ## Credits and retries
 
-Successful embed and detect operations each consume one credit. Handled failures
-restore a reserved credit. An interrupted request with an uncertain outcome can
-remain reserved while it is reconciled.
+Successful embed and detect operations each consume one credit. Embedding reserves
+one credit when its durable job is accepted, charges on verified persisted success,
+and releases the reservation on terminal failure. Retries and result downloads do
+not consume additional credits. During an outage, reservations remain until a worker
+can complete or finalize the job.
 
-The SDKs do not automatically retry operations. A network timeout does not prove
-that the server did no work. Keep successful image bytes and request IDs, and
-avoid blindly retrying an operation that may already have completed.
+Embedding SDK calls automatically retry transient failures and poll `202` jobs.
+A client timeout does not cancel the job. Resume with the request ID or resubmit the
+same image/data and idempotency key. Terminal JSON has `status: "failed"`; retrying
+that key returns the same failure. See [embedding](/docs/api/embed) for retention.
 
-`Idempotency-Key` detects duplicates; it does not replay a saved response. A reused
-key may return `409`, including when the original request succeeded.
+Detection remains synchronous: SDKs do not retry detection automatically, and a reused
+key may return `409`. An interrupted detection can remain reserved for reconciliation.
 
 ## Service status
 

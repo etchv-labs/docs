@@ -1,7 +1,7 @@
 <Endpoint method="POST" path="/watermarks/images" />
 
 Embeds the SHA-256 digest of your JSON data into the image. The response is a
-lossless PNG with the identifier in a response header.
+lossless PNG with the identifier in a response header, or `202` while durable work continues.
 
 ## Request
 
@@ -16,11 +16,14 @@ Authenticate with `X-API-Key` and the `watermarks:embed` scope. Submit a
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/images \
   -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Idempotency-Key: campaign-01-partner-42" \
   -F 'file=@photo.jpg' \
   -F 'data={"asset":"campaign-01","recipient":"partner-42"}' \
   -D response-headers.txt \
-  --output watermarked.png
+  --output response-body
 ```
+
+Check the HTTP status in `response-headers.txt`: save a `200` body as PNG; a `202` body is JSON describing the job. The SDKs handle this automatically.
 
 ## Response
 
@@ -43,8 +46,35 @@ The service verifies the embedded identifier in the output pixels before
 returning the PNG. If that check fails, it returns `422` rather than an image.
 Keep successful output bytes unchanged when writing them to disk.
 
-## Duplicate requests
+## Durable execution and duplicate requests
 
-You may send an `Idempotency-Key` header. Reusing a key returns a conflict rather
-than replaying the previous image. Save successful outputs and see
-[errors and limits](/docs/api/errors) before retrying a request with an uncertain result.
+Send a stable `Idempotency-Key` (8–128 letters, digits, hyphens or underscores)
+for each logical embedding operation. The service saves the original input and
+atomically creates a job with one reserved credit before processing it.
+Reusing the same key and input resumes that job or returns its saved PNG, with the
+same request ID and no second charge. Changed input with the same key returns `409`.
+
+The HTTP request waits up to 20 seconds for completion. If still running, it returns
+`202`, `Retry-After: 2`, and JSON containing `request_id`, `status_url`, and `result_url`.
+Use the same API key to GET `result_url` until it returns `200` PNG or a terminal error.
+GET `status_url` returns job metadata. Jobs are scoped to your organization.
+
+Workers retry transient failures and verification failures up to five attempts,
+with backoff, using the original image and the same identifier each time. A worker
+crash is recovered after its lease expires. Work continues after a client disconnect.
+Jobs have a 30-minute processing deadline; when workers recover after an outage,
+they finalize expired jobs as failed and release their reservations.
+
+Only an output PNG whose decoded watermark exactly matches the expected identifier
+is marked successful. The saved result and its one-credit charge are committed
+together after upload. Terminal failures release the reservation. Retrieving a
+successful result never consumes another credit.
+
+## Retention
+
+Download saved PNGs within **24 hours of completion**. After that, result retrieval
+returns `410`; the original key remains recorded and cannot create another charge.
+Use a new key for a genuinely new operation, including retrying a terminal failure.
+Encrypted input and result objects become eligible for automatic deletion after
+seven days. Job and billing metadata remain for idempotency and accounting.
+The JSON payload itself is not retained; its digest is embedded.

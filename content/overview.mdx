@@ -34,7 +34,7 @@ the key's organization.
 
 Use HTTP directly, or start with the official [Node.js](/docs/sdks/node) and
 [Python](/docs/sdks/python) clients. Both SDKs return the image bytes and request
-metadata and leave retry decisions to your application.
+metadata. Embedding retries and polls durable jobs automatically within the client timeout.
 
 <Callout title="Evaluate your distribution workflow">
   Recovery depends on the image and any edits applied to it. Test compression,
