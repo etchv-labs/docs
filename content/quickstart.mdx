@@ -1,0 +1,53 @@
+Start with an image, an Etchv API key, and an organization with an active plan
+and available credits. Your key needs both `watermarks:embed` and
+`watermarks:detect` scopes.
+
+## Set your API key
+
+Create a key in your [Etchv dashboard](/dashboard/api-keys) and keep it in a server
+secret or environment variable. In a local terminal:
+
+```sh
+export ETCHV_API_KEY="YOUR_API_KEY"
+```
+
+## Embed a watermark
+
+Send your image and a JSON object containing the reference data you want to
+associate with this copy. Replace `photo.jpg` with your own image.
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/images \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@photo.jpg' \
+  -F 'data={"asset":"campaign-01","recipient":"partner-42"}' \
+  -D response-headers.txt \
+  --output watermarked.png
+```
+
+On success, the response body is a PNG. Save the `X-Watermark-ID` response header
+with your delivery record. `X-Request-ID` identifies the API operation.
+
+<Callout title="Preserve the returned bytes">
+  Keep the output as PNG without re-encoding it. Converting to JPEG or applying
+  other edits can affect watermark recovery. If the request fails, its response
+  body is an error, not an image.
+</Callout>
+
+## Detect the watermark
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@watermarked.png'
+```
+
+A successful detection returns `watermarked`, `confidence`, and `watermark_id`.
+Compare the recovered ID with the ID saved from your embed response. When no
+watermark is detected, `watermark_id` is `null`.
+
+## Build it into your application
+
+Use the [Node.js SDK](/docs/sdks/node) or [Python SDK](/docs/sdks/python) to work
+with image bytes and structured responses. Review [errors and limits](/docs/api/errors)
+before adding retries or accepting uploads from users.

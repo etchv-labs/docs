@@ -1,0 +1,43 @@
+Etchv embeds an invisible identifier into an image's pixels. Use it to connect a
+shared copy to a delivery record, a recipient, or the origin of generated content.
+
+<Cards>
+  <Card href="/docs/quickstart" title="Make your first request">
+    Add a watermark, save the PNG, and recover its identifier.
+  </Card>
+  <Card href="/docs/api/embed" title="Explore the API">
+    Request fields, response formats, and image limits.
+  </Card>
+</Cards>
+
+## How it works
+
+1. **Embed.** Send an image and a non-empty JSON object describing your record.
+2. **Save.** Store the returned watermark ID alongside that record in your system.
+3. **Deliver.** Distribute the watermarked PNG through your application.
+4. **Detect.** Inspect a recovered image and look up its ID in your records.
+
+The watermark is the SHA-256 digest of your canonicalized JSON data. Detection
+returns that identifier, not your original JSON or a person's identity.
+
+## API base URL
+
+```text
+https://api.etchv.com
+```
+
+Send requests from your server using a scoped Etchv API key. The API supports
+image embedding and detection. Both successful operations consume credits from
+the key's organization.
+
+## Choose your integration
+
+Use HTTP directly, or start with the official [Node.js](/docs/sdks/node) and
+[Python](/docs/sdks/python) clients. Both SDKs return the image bytes and request
+metadata and leave retry decisions to your application.
+
+<Callout title="Evaluate your distribution workflow">
+  Recovery depends on the image and any edits applied to it. Test compression,
+  resizing, and cropping before relying on detection. A recovered ID is an
+  investigative signal; it does not prove who shared an image.
+</Callout>

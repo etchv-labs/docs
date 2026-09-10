@@ -1,0 +1,36 @@
+Image API requests use an Etchv API key in the `X-API-Key` header.
+
+```sh
+curl https://api.etchv.com/watermarks/images/detect \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@watermarked.png'
+```
+
+## Create a key
+
+Sign in to the [dashboard](/dashboard/api-keys), select your organization, and
+create a key with the scopes your integration needs. Copy the key when it is
+created and store it in your server's secret manager.
+
+| Scope | Allowed operation |
+| --- | --- |
+| `watermarks:embed` | Embed a watermark in an image |
+| `watermarks:detect` | Detect a watermark in an image |
+
+Keys belong to an organization and are subject to membership, expiration,
+revocation, and billing checks. An authenticated key alone does not guarantee
+that credits are available.
+
+## Keep credentials on your server
+
+Do not embed keys in frontend JavaScript, mobile application bundles, public
+repositories, or image URLs. Your backend should call Etchv on behalf of users.
+Revoke a key immediately if it is exposed, then create a replacement.
+
+## Authentication errors
+
+A missing or invalid key returns `401`. A key without the required scope returns
+`403`. Unavailable credits or billing can return `402`.
+
+Account and organization management use signed-in Clerk sessions. An image API
+key is not a replacement for a user session on management endpoints.

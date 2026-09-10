@@ -1,0 +1,39 @@
+Non-success responses normally contain JSON with a `detail` field. Save the
+HTTP status and any `X-Request-ID` header when investigating a failed request.
+
+## Status codes
+
+| Status | Meaning | Next step |
+| --- | --- | --- |
+| `401` | Missing or invalid authentication | Check your API key |
+| `403` | Insufficient scope or access | Check key scopes and organization membership |
+| `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
+| `409` | Duplicate or conflicting operation | Inspect the original request before resubmitting |
+| `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
+| `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
+| `503` | A required service is unavailable | Check service status and handle the failure in your application |
+
+## Image limits
+
+Uploads must be at most **20 MB** and **40 megapixels**. Embedding returns PNG.
+Send encoded image bytes rather than a URL or base64 string. The `data` field
+must contain a non-empty JSON object, not an array or plain string.
+
+## Credits and retries
+
+Successful embed and detect operations each consume one credit. Handled failures
+restore a reserved credit. An interrupted request with an uncertain outcome can
+remain reserved while it is reconciled.
+
+The SDKs do not automatically retry operations. A network timeout does not prove
+that the server did no work. Keep successful image bytes and request IDs, and
+avoid blindly retrying an operation that may already have completed.
+
+`Idempotency-Key` detects duplicates; it does not replay a saved response. A reused
+key may return `409`, including when the original request succeeded.
+
+## Service status
+
+Check [status.etchv.com](https://status.etchv.com) for service availability.
+For help, contact [hello@etchv.com](mailto:hello@etchv.com) with the request ID
+and HTTP status. Do not send your API key.

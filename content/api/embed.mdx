@@ -1,0 +1,50 @@
+<Endpoint method="POST" path="/watermarks/images" />
+
+Embeds the SHA-256 digest of your JSON data into the image. The response is a
+lossless PNG with the identifier in a response header.
+
+## Request
+
+Authenticate with `X-API-Key` and the `watermarks:embed` scope. Submit a
+`multipart/form-data` request; let your HTTP client set the multipart boundary.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | Image file | Yes | An encoded image, at most 20 MB and 40 megapixels |
+| `data` | JSON string | Yes | A non-empty JSON object describing your reference record |
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/images \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@photo.jpg' \
+  -F 'data={"asset":"campaign-01","recipient":"partner-42"}' \
+  -D response-headers.txt \
+  --output watermarked.png
+```
+
+## Response
+
+A successful request returns `200` with `Content-Type: image/png`.
+
+| Header | Description |
+| --- | --- |
+| `X-Watermark-ID` | The 256-bit identifier represented as 64 hexadecimal characters |
+| `X-Request-ID` | The operation's request identifier |
+| `Content-Disposition` | Suggested filename for the watermarked PNG |
+
+The service sorts JSON keys and removes insignificant whitespace before hashing.
+Keep the returned ID with the original record; the detector cannot reconstruct
+the JSON from its hash. Distinct recipient or delivery records produce distinct
+identifiers. Identical canonical data produces the same identifier.
+
+## Output verification
+
+The service verifies the embedded identifier in the output pixels before
+returning the PNG. If that check fails, it returns `422` rather than an image.
+Keep successful output bytes unchanged when writing them to disk.
+
+## Duplicate requests
+
+You may send an `Idempotency-Key` header. Reusing a key returns a conflict rather
+than replaying the previous image. Save successful outputs and see
+[errors and limits](/docs/api/errors) before retrying a request with an uncertain result.
