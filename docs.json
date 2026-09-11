@@ -1,20 +1,103 @@
 {
   "groups": [
-    { "title": "Getting started", "pages": [
-      { "slug": "", "file": "overview.mdx", "title": "Overview", "description": "Give every image an invisible identity with the Etchv API." },
-      { "slug": "quickstart", "file": "quickstart.mdx", "title": "Quickstart", "description": "Embed your first watermark and recover its identifier." },
-      { "slug": "authentication", "file": "authentication.mdx", "title": "Authentication", "description": "Create scoped API keys and keep them on your server." }
-    ]},
-    { "title": "API reference", "pages": [
-      { "slug": "api/embed", "file": "api/embed.mdx", "title": "Embed an image", "description": "Attach a forensic identifier to an image and receive its original format." },
-      { "slug": "api/detect", "file": "api/detect.mdx", "title": "Detect a watermark", "description": "Recover the watermark identifier from an image." },
-      { "slug": "api/documents", "file": "api/documents.mdx", "title": "PDF watermarking", "description": "Preserve selectable text and vector content while watermarking every page." },
-      { "slug": "api/videos", "file": "api/videos.mdx", "title": "Video watermarking", "description": "Watermark supported H.264 MP4/MOV videos with durable jobs and preserved audio." },
-      { "slug": "api/errors", "file": "api/errors.mdx", "title": "Errors and limits", "description": "Handle failed requests, image limits, and duplicate operations." }
-    ]},
-    { "title": "SDKs", "pages": [
-      { "slug": "sdks/node", "file": "sdks/node.mdx", "title": "Node.js", "description": "Embed and detect images from your Node.js application." },
-      { "slug": "sdks/python", "file": "sdks/python.mdx", "title": "Python", "description": "Embed and detect images from your Python application." }
-    ]}
+    {
+      "title": "Getting started",
+      "pages": [
+        {
+          "slug": "",
+          "file": "overview.mdx",
+          "title": "Overview",
+          "description": "Give every image an invisible identity with the Etchv API."
+        },
+        {
+          "slug": "quickstart",
+          "file": "quickstart.mdx",
+          "title": "Quickstart",
+          "description": "Embed your first watermark and recover its identifier."
+        },
+        {
+          "slug": "authentication",
+          "file": "authentication.mdx",
+          "title": "Authentication",
+          "description": "Create scoped API keys and keep them on your server."
+        }
+      ]
+    },
+    {
+      "title": "API reference",
+      "pages": [
+        {
+          "slug": "api/embed",
+          "file": "api/embed.mdx",
+          "title": "Embed an image",
+          "description": "Attach a forensic identifier to an image and receive its original format."
+        },
+        {
+          "slug": "api/detect",
+          "file": "api/detect.mdx",
+          "title": "Detect a watermark",
+          "description": "Recover the watermark identifier from an image."
+        },
+        {
+          "slug": "api/documents",
+          "file": "api/documents.mdx",
+          "title": "PDF watermarking",
+          "description": "Preserve selectable text and vector content while watermarking every page."
+        },
+        {
+          "slug": "api/videos",
+          "file": "api/videos.mdx",
+          "title": "Video watermarking",
+          "description": "Watermark supported H.264 MP4/MOV videos with durable jobs and preserved audio."
+        },
+        {
+          "slug": "api/errors",
+          "file": "api/errors.mdx",
+          "title": "Errors and limits",
+          "description": "Handle failed requests, image limits, and duplicate operations."
+        }
+      ]
+    },
+    {
+      "title": "SDKs",
+      "pages": [
+        {
+          "slug": "sdks/node",
+          "file": "sdks/node.mdx",
+          "title": "Node.js",
+          "description": "Embed and detect images from your Node.js application."
+        },
+        {
+          "slug": "sdks/python",
+          "file": "sdks/python.mdx",
+          "title": "Python",
+          "description": "Embed and detect images from your Python application."
+        },
+        {
+          "slug": "sdks/go",
+          "file": "sdks/go.mdx",
+          "title": "Go",
+          "description": "Native image, PDF and video watermarking with Go."
+        },
+        {
+          "slug": "sdks/rust",
+          "file": "sdks/rust.mdx",
+          "title": "Rust",
+          "description": "Native image, PDF and video watermarking with Rust."
+        },
+        {
+          "slug": "sdks/csharp",
+          "file": "sdks/csharp.mdx",
+          "title": "C#",
+          "description": "Native image, PDF and video watermarking with C#."
+        },
+        {
+          "slug": "sdks/java",
+          "file": "sdks/java.mdx",
+          "title": "Java",
+          "description": "Native image, PDF and video watermarking with Java."
+        }
+      ]
+    }
   ]
 }

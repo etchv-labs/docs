@@ -1,0 +1,36 @@
+Use the [Etchv C# SDK](https://github.com/etchv-labs/csharp-sdk) with .NET 10.
+
+## Install
+
+Build from source (not yet published on NuGet):
+```sh
+git clone --branch v0.1.0 https://github.com/etchv-labs/csharp-sdk.git
+dotnet pack csharp-sdk/src/Etchv -c Release -o ./packages
+dotnet add YourApp.csproj package Etchv --version 0.1.0 --source ./packages
+```
+
+## Embed a file
+
+```csharp
+using Etchv;
+
+using var client = new EtchvClient(Environment.GetEnvironmentVariable("ETCHV_API_KEY")!);
+var result = await client.EmbedImageAsync(await File.ReadAllBytesAsync("photo.jpg"),
+    new Dictionary<string, object?> { ["asset"] = "photo-123" },
+    new RequestOptions(Filename: "photo.jpg"));
+await File.WriteAllBytesAsync(result.Filename, result.Bytes);
+```
+
+## Images, documents and video
+
+`EmbedImageAsync` / `DetectImageAsync`, `EmbedDocumentAsync` / `DetectDocumentAsync`, `EmbedVideoAsync` / `DetectVideoAsync`. All methods preserve the API’s native output bytes. Supported formats are PNG, JPEG, WebP, GIF, TIFF, BMP, PPM, PSD, PSB, PDF and the qualified H.264 MP4/MOV profile.
+
+See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos). Office formats and other codecs remain planned.
+
+## Retries and recovery
+
+Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `GetEmbedResultAsync(requestId)` / `GetDetectionResultAsync(requestId)`.
+
+`EtchvClient(key, baseUrl, timeout)` configures the deadline. Every operation accepts `CancellationToken`; caller cancellation propagates `OperationCanceledException`. Inspect `EtchvException.StatusCode`, `Detail`, `RequestId`, and `IdempotencyKey`. Dispose the client when finished.
+
+Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.

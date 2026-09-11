@@ -1,0 +1,47 @@
+Use the [Etchv Java SDK](https://github.com/etchv-labs/java-sdk) with Java 21+ and Maven 3.9+.
+
+## Install
+
+Install locally from source (not yet published on Maven Central):
+```sh
+git clone --branch v0.1.0 https://github.com/etchv-labs/java-sdk.git
+mvn -f java-sdk/pom.xml install
+```
+Then add to your application's `pom.xml`:
+```xml
+<dependency>
+  <groupId>com.etchv</groupId><artifactId>etchv-sdk</artifactId><version>0.1.0</version>
+</dependency>
+```
+
+## Embed a file
+
+```java
+import com.etchv.EtchvClient;
+import java.nio.file.*;
+import java.util.Map;
+
+class Example {
+    public static void main(String[] args) throws Exception {
+        try (var client = new EtchvClient(System.getenv("ETCHV_API_KEY"))) {
+            var result = client.embedImage(Files.readAllBytes(Path.of("photo.jpg")),
+                Map.of("asset", "photo-123"), new EtchvClient.Options("photo.jpg", null));
+            Files.write(Path.of(result.filename()), result.bytes());
+        }
+    }
+}
+```
+
+## Images, documents and video
+
+`embedImage` / `detectImage`, `embedDocument` / `detectDocument`, `embedVideo` / `detectVideo`. All methods preserve the API’s native output bytes. Supported formats are PNG, JPEG, WebP, GIF, TIFF, BMP, PPM, PSD, PSB, PDF and the qualified H.264 MP4/MOV profile.
+
+See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos). Office formats and other codecs remain planned.
+
+## Retries and recovery
+
+Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `getEmbedResult(requestId)` / `getDetectionResult(requestId)`.
+
+`EtchvClient(key, baseUrl, Duration)` sets the deadline. Calls are synchronous and propagate `InterruptedException` on thread interruption. Inspect `EtchvClient.EtchvException.statusCode`, `detail`, `requestId`, and `idempotencyKey`. Close the client when finished.
+
+Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.

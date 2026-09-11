@@ -1,0 +1,44 @@
+Use the [Etchv Go SDK](https://github.com/etchv-labs/go-sdk) with Go 1.25+.
+
+## Install
+
+```sh
+go get github.com/etchv-labs/go-sdk@v0.1.0
+```
+
+## Embed a file
+
+```go
+package main
+
+import (
+    "context"
+    "os"
+    "github.com/etchv-labs/go-sdk"
+)
+
+func main() {
+    client, err := etchv.New(os.Getenv("ETCHV_API_KEY"))
+    if err != nil { panic(err) }
+    file, err := os.ReadFile("photo.jpg")
+    if err != nil { panic(err) }
+    result, err := client.EmbedImage(context.Background(), file,
+        map[string]any{"asset": "photo-123"}, etchv.Options{Filename: "photo.jpg"})
+    if err != nil { panic(err) }
+    if err := os.WriteFile(result.Filename, result.Bytes, 0600); err != nil { panic(err) }
+}
+```
+
+## Images, documents and video
+
+`EmbedImage` / `DetectImage`, `EmbedDocument` / `DetectDocument`, `EmbedVideo` / `DetectVideo`. All methods preserve the API’s native output bytes. Supported formats are PNG, JPEG, WebP, GIF, TIFF, BMP, PPM, PSD, PSB, PDF and the qualified H.264 MP4/MOV profile.
+
+See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos). Office formats and other codecs remain planned.
+
+## Retries and recovery
+
+Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `GetEmbedResult(ctx, requestID)` / `GetDetectionResult(ctx, requestID)`.
+
+`NewWithOptions(key, baseURL, timeout)`; all calls accept a context for cancellation. Inspect `*etchv.Error` with `errors.As` for `StatusCode`, `Detail`, `RequestID`, and `IdempotencyKey`.
+
+Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.

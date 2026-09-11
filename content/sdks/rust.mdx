@@ -1,0 +1,40 @@
+Use the [Etchv Rust SDK](https://github.com/etchv-labs/rust-sdk) with Current stable Rust (edition 2024).
+
+## Install
+
+Add this dependency to `Cargo.toml` (not yet published on crates.io):
+```toml
+[dependencies]
+etchv = { git = "https://github.com/etchv-labs/rust-sdk", tag = "v0.1.0" }
+serde_json = "1"
+```
+
+## Embed a file
+
+```rust
+use etchv::{Client, Options};
+use serde_json::json;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new(std::env::var("ETCHV_API_KEY")?)?;
+    let result = client.embed_image(&std::fs::read("photo.jpg")?,
+        &json!({"asset": "photo-123"}),
+        Options { filename: Some("photo.jpg".into()), ..Default::default() })?;
+    std::fs::write(&result.filename, &result.bytes)?;
+    Ok(())
+}
+```
+
+## Images, documents and video
+
+`embed_image` / `detect_image`, `embed_document` / `detect_document`, `embed_video` / `detect_video`. All methods preserve the API’s native output bytes. Supported formats are PNG, JPEG, WebP, GIF, TIFF, BMP, PPM, PSD, PSB, PDF and the qualified H.264 MP4/MOV profile.
+
+See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos). Office formats and other codecs remain planned.
+
+## Retries and recovery
+
+Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `get_embed_result(request_id)` / `get_detection_result(request_id)`.
+
+`Client::with_options(key, base_url, Duration)` sets the deadline. This is a blocking client; use a dedicated thread or `spawn_blocking` from async applications. Inspect `Error.status_code`, `detail`, `request_id`, and `idempotency_key`.
+
+Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.
