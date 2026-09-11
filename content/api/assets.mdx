@@ -112,7 +112,7 @@ Send the current `version` and at least one of `name` or `metadata`. A successfu
 update returns the record with an incremented version. `409` means someone else
 changed it: reload, reconcile your changes, and send the new version.
 
-Names are 1–200 printable characters. Metadata is a JSON object of at most 8 KB,
+API request bodies are limited to 64 KB before JSON parsing. Names are 1–200 printable characters. Metadata is a JSON object of at most 8 KB,
 with at most eight nested levels. Keys must be 1–100 characters, without dots,
 null characters or a leading dollar sign. Numbers must be finite; integers must fit signed 64-bit values. Metadata is
 **replaced**, not merged; `{}` or `null` clears it. Unknown fields are rejected.
