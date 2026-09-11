@@ -9,14 +9,21 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | `403` | Insufficient scope or access | Check key scopes and organization membership |
 | `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
 | `409` | Conflicting embed input or duplicate detect operation | Reuse the original embed input, or inspect the detect operation |
-| `410` | Saved embedding result expired | Use your saved PNG; a new operation requires a new key |
+| `410` | Saved embedding result expired | Use your saved image; a new operation requires a new key |
 | `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |
 
 ## Image limits
 
-Uploads must be at most **20 MB** and **40 megapixels**. Embedding returns PNG.
+Uploads and delivered files must be at most **20 MB**. Images may contain up to
+**32 frames or pages** (including an APNG default/poster image), totaling **40 megapixels** across all frames/pages.
+**GIF frames are limited to one megapixel each**.
+PSD/PSB are limited to **4 megapixels per canvas**, **64 layers**, and **16 megapixels
+across layers**, including the two full-canvas watermark layers added by embedding.
+The dashboard upload limit is **4 MB**. Native formats that browsers cannot preview
+can still be uploaded. Embedding preserves the original format.
+High-bit-depth and CMYK variants are not supported in this release.
 Send encoded image bytes rather than a URL or base64 string. The `data` field
 must contain a non-empty JSON object, not an array or plain string.
 

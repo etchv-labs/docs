@@ -22,14 +22,14 @@ curl --fail-with-body https://api.etchv.com/watermarks/images \
   -F 'file=@photo.jpg' \
   -F 'data={"asset":"campaign-01","recipient":"partner-42"}' \
   -D response-headers.txt \
-  --output watermarked.png
+  --output response-body
 ```
 
-On success, the response body is a PNG. Save the `X-Watermark-ID` response header
+A `200` response contains the image in its original format; save it using the suggested `Content-Disposition` filename. A `202` response is a pending job: follow its result URL as described in [embedding](/docs/api/embed). Save the `X-Watermark-ID` response header
 with your delivery record. `X-Request-ID` identifies the API operation.
 
 <Callout title="Preserve the returned bytes">
-  Keep the output as PNG without re-encoding it. Converting to JPEG or applying
+  Keep the output bytes unchanged. Recompressing or applying
   other edits can affect watermark recovery. If the request fails, its response
   body is an error, not an image.
 </Callout>
@@ -39,7 +39,7 @@ with your delivery record. `X-Request-ID` identifies the API operation.
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
   -H "X-API-Key: $ETCHV_API_KEY" \
-  -F 'file=@watermarked.png'
+  -F 'file=@photo-watermarked.jpg'
 ```
 
 A successful detection returns `watermarked`, `confidence`, and `watermark_id`.

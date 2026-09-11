@@ -3,7 +3,7 @@ shared copy to a delivery record, a recipient, or the origin of generated conten
 
 <Cards>
   <Card href="/docs/quickstart" title="Make your first request">
-    Add a watermark, save the PNG, and recover its identifier.
+    Add a watermark, save the image, and recover its identifier.
   </Card>
   <Card href="/docs/api/embed" title="Explore the API">
     Request fields, response formats, and image limits.
@@ -14,7 +14,7 @@ shared copy to a delivery record, a recipient, or the origin of generated conten
 
 1. **Embed.** Send an image and a non-empty JSON object describing your record.
 2. **Save.** Store the returned watermark ID alongside that record in your system.
-3. **Deliver.** Distribute the watermarked PNG through your application.
+3. **Deliver.** Distribute the watermarked image through your application.
 4. **Detect.** Inspect a recovered image and look up its ID in your records.
 
 The watermark is the SHA-256 digest of your canonicalized JSON data. Detection
