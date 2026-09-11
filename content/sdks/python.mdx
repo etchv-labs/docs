@@ -61,7 +61,11 @@ To resume a known embedding job, call `get_embed_result(request_id)`. Supply you
 idempotency key when embedding if you need recovery across process restarts.
 
 
-Version 0.2.0 supports original-format image results. Use the returned filename
+Version 0.3.0 supports native image, PDF and video results. Use the returned filename
 when saving bytes; older clients that require PNG must be upgraded. Detection's
 `units` field reports each frame, page or layered composite separately. The
 top-level identifier is only present when all units recover the same watermark.
+
+## Documents and video
+
+Use the document methods for [PDF watermarking](/docs/api/documents), and the video methods for [supported MP4/MOV videos](/docs/api/videos). PDF preserves selectable text and vectors. Video operations use durable jobs and charge one credit per started minute. The existing `image` result field contains the native file bytes.

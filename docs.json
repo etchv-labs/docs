@@ -6,8 +6,10 @@
       { "slug": "authentication", "file": "authentication.mdx", "title": "Authentication", "description": "Create scoped API keys and keep them on your server." }
     ]},
     { "title": "API reference", "pages": [
-      { "slug": "api/embed", "file": "api/embed.mdx", "title": "Embed an image", "description": "Attach a forensic identifier to an image and receive a lossless PNG." },
+      { "slug": "api/embed", "file": "api/embed.mdx", "title": "Embed an image", "description": "Attach a forensic identifier to an image and receive its original format." },
       { "slug": "api/detect", "file": "api/detect.mdx", "title": "Detect a watermark", "description": "Recover the watermark identifier from an image." },
+      { "slug": "api/documents", "file": "api/documents.mdx", "title": "PDF watermarking", "description": "Preserve selectable text and vector content while watermarking every page." },
+      { "slug": "api/videos", "file": "api/videos.mdx", "title": "Video watermarking", "description": "Watermark supported H.264 MP4/MOV videos with durable jobs and preserved audio." },
       { "slug": "api/errors", "file": "api/errors.mdx", "title": "Errors and limits", "description": "Handle failed requests, image limits, and duplicate operations." }
     ]},
     { "title": "SDKs", "pages": [

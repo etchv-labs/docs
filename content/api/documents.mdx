@@ -1,0 +1,46 @@
+`POST /watermarks/documents` embeds a forensic identifier into every rendered PDF
+page. `POST /watermarks/documents/detect` detects it page by page. Authentication,
+`data`, idempotency keys, durable jobs and saved-result retrieval follow the
+[image API](/docs/api/embed).
+
+The output is a native PDF. Existing text, fonts and vector drawing commands
+remain in the document. Two pixel-based blend textures adjust the page appearance
+to carry the watermark; pages are **not replaced with flattened images**. Text
+remains searchable and selectable. Page sizes, link annotations and document
+metadata are retained. The watermark textures are tied to the original layout;
+editing content or removing them can change recovery.
+
+## First supported profile
+
+- Passive, unencrypted PDFs with 1–8 unrotated pages, using standard page units.
+- Text, vector graphics and scanned images within the same PDF.
+- Up to 20 MB input and output; dashboard uploads remain limited to 4 MB.
+- Pages rendered at 144 dpi: up to 4 million pixels per page and 16 million total.
+- Only link annotations. Forms, signatures, other annotations, attachments and
+  active content are rejected. Signed files are never silently modified.
+
+Every final serialized page must recover the exact identifier and meet a 35 dB
+minimum rendered PSNR before the job succeeds. Verification uses a canonical
+144 dpi RGB rendering. Different rendering engines, printing, re-saving and edits
+can affect recovery; arbitrary transformations are not guaranteed.
+
+## Billing and results
+
+One successful embed uses one credit **per PDF**, rather than per page. A separate
+successful detection uses one credit. Failed embed jobs release their reservation.
+Saved results remain available for 24 hours. Retries start from the original PDF;
+replaying the same idempotency key returns the saved bytes without another charge.
+
+Detection returns a zero-based `units` entry for each page. Top-level `watermarked`
+is true only when every page recovers the same identifier. Partial or mixed-page
+results are visible in `units` and have a null top-level identifier.
+
+## SDKs
+
+Python: `client.embed_document(pdf_bytes, data)` and `client.detect_document(pdf_bytes)`.
+Node.js: `client.embedDocument(pdfBytes, data)` and `client.detectDocument(pdfBytes)`.
+The result's `image` field holds the native PDF bytes for compatibility with the
+existing result type; `content_type` / `contentType` is `application/pdf` and
+`filename` ends in `.pdf`.
+
+DOCX and PPTX remain under development. Use the separate [video endpoints](/docs/api/videos) for supported MP4/MOV files.
