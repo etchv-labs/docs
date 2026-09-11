@@ -32,6 +32,8 @@ A successful request returns `200` with the MIME type of the original image form
 | Header | Description |
 | --- | --- |
 | `X-Watermark-ID` | The 256-bit identifier represented as 64 hexadecimal characters |
+| `X-Asset-ID` | Verified output asset ID for 30-day downloads |
+| `X-Source-Asset-ID` | Original upload asset ID |
 | `X-Request-ID` | The operation's request identifier |
 | `Content-Disposition` | Suggested filename for the watermarked image |
 
@@ -72,11 +74,12 @@ successful result never consumes another credit.
 
 ## Retention
 
-Download saved images within **24 hours of completion**. After that, result retrieval
+The job result endpoint is available for **24 hours of completion**. After that, job result retrieval
 returns `410`; the original key remains recorded and cannot create another charge.
 Use a new key for a genuinely new operation, including retrying a terminal failure.
-Encrypted input and result objects become eligible for automatic deletion after
-seven days. Job and billing metadata remain for idempotency and accounting.
+New successful jobs also save the original and verified output in the [asset library](/docs/api/assets), downloadable for **30 days**. Asset records stay until deleted.
+Encrypted processing copies become eligible for deletion after seven days; library
+copies expire separately. Job and billing metadata remain for idempotency and accounting.
 The JSON payload itself is not retained; its digest is embedded.
 
 ## Native format preservation

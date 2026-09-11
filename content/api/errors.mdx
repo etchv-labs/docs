@@ -8,8 +8,9 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | `401` | Missing or invalid authentication | Check your API key |
 | `403` | Insufficient scope or access | Check key scopes and organization membership |
 | `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
-| `409` | Conflicting embed input or duplicate detect operation | Reuse the original embed input, or inspect the detect operation |
-| `410` | Saved embedding result expired | Use your saved image; a new operation requires a new key |
+| `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
+| `404` | Asset not found or outside your organization | Check the asset ID and organization |
+| `410` | Job result or asset file expired/deleted | Use your own saved copy; an expired asset record remains readable |
 | `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |
@@ -40,8 +41,10 @@ A client timeout does not cancel the job. Resume with the request ID or resubmit
 same image/data and idempotency key. Terminal JSON has `status: "failed"`; retrying
 that key returns the same failure. See [embedding](/docs/api/embed) for retention.
 
-Detection remains synchronous: SDKs do not retry detection automatically, and a reused
-key may return `409`. An interrupted detection can remain reserved for reconciliation.
+Image and PDF detection remain synchronous: SDKs do not retry those detections
+automatically. Video detection uses durable jobs and automatic polling. Images and
+PDFs use one credit per operation; video uses one credit per started minute, per
+operation. Asset management and downloads consume no credits.
 
 ## Service status
 

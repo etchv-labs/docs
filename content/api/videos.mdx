@@ -61,3 +61,10 @@ Python SDK: `embed_video` / `detect_video`. Node.js SDK: `embedVideo` / `detectV
 SDKs poll durable jobs automatically within their configured timeout. The `image`
 field of an embedding result contains the native video bytes; use its returned
 filename and content type when saving the file.
+
+## Asset library
+
+Every new successful embedding saves the original and verified output in the
+[asset library](/docs/api/assets). The response includes `X-Asset-ID` and
+`X-Source-Asset-ID`. Files remain downloadable there for 30 days, and records
+stay until deleted. Detection uploads do not create assets.

@@ -1,4 +1,4 @@
-Etchv embeds an invisible identifier into an image's pixels. Use it to connect a
+Etchv embeds invisible identifiers into images, PDF pages and supported video frames. Use it to connect a
 shared copy to a delivery record, a recipient, or the origin of generated content.
 
 <Cards>
@@ -27,13 +27,13 @@ https://api.etchv.com
 ```
 
 Send requests from your server using a scoped Etchv API key. The API supports
-image embedding and detection. Both successful operations consume credits from
+embedding, detection and an [asset library](/docs/api/assets). Successful watermarking operations consume credits from
 the key's organization.
 
 ## Choose your integration
 
 Use HTTP directly, or start with the official [Node.js](/docs/sdks/node) and
-[Python](/docs/sdks/python) clients. Both SDKs return the image bytes and request
+[Python](/docs/sdks/python) clients. SDKs are also available for Go, Rust, C# and Java. They return file bytes and request
 metadata. Embedding retries and polls durable jobs automatically within the client timeout.
 
 <Callout title="Evaluate your distribution workflow">
@@ -41,3 +41,9 @@ metadata. Embedding retries and polls durable jobs automatically within the clie
   resizing, and cropping before relying on detection. A recovered ID is an
   investigative signal; it does not prove who shared an image.
 </Callout>
+
+## Keep your files connected
+
+New successful embeddings save an original asset and its verified output. Browse
+them in the [dashboard](/dashboard/assets), or manage them through the
+[asset API](/docs/api/assets). Downloads last 30 days; records stay until deleted.

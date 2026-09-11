@@ -1,4 +1,4 @@
-Image API requests use an Etchv API key in the `X-API-Key` header.
+Watermark and asset API requests use an Etchv API key in the `X-API-Key` header.
 
 ```sh
 curl https://api.etchv.com/watermarks/images/detect \
@@ -14,8 +14,11 @@ created and store it in your server's secret manager.
 
 | Scope | Allowed operation |
 | --- | --- |
-| `watermarks:embed` | Embed a watermark in an image |
-| `watermarks:detect` | Detect a watermark in an image |
+| `watermarks:embed` | Embed in an image, PDF or video |
+| `watermarks:detect` | Detect in an image, PDF or video |
+| `assets:read` | List, inspect and download assets |
+| `assets:write` | Rename assets and replace metadata |
+| `assets:delete` | Delete assets; also requires current owner or admin membership |
 
 Keys belong to an organization and are subject to membership, expiration,
 revocation, and billing checks. An authenticated key alone does not guarantee
@@ -34,3 +37,6 @@ A missing or invalid key returns `401`. A key without the required scope returns
 
 Account and organization management use signed-in account sessions. An image API
 key is not a replacement for a user session on management endpoints.
+
+Existing keys keep their scopes. Create a replacement key to add asset permissions.
+Asset operations do not consume watermarking credits. See the [asset API](/docs/api/assets).
