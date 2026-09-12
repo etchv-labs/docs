@@ -108,7 +108,7 @@ Job results remain available for 24 hours. Embedded source and output assets als
 
 ## Receive an async webhook instead of polling
 
-Create an endpoint in [Dashboard → Webhooks](/dashboard/webhooks), save its signing secret, and include its ID as the `webhook_id` query parameter:
+Create an endpoint in [Dashboard webhooks](/dashboard/webhooks), save its signing secret, and include its ID as the `webhook_id` query parameter:
 
 ```bash
 curl "https://api.etchv.com/watermarks/images/async?webhook_id=$ETCHV_WEBHOOK_ID" \

@@ -27,7 +27,7 @@ key, connection string, account-wide SAS, URL, or private endpoint.
 
 ## 2. Connect and verify
 
-In [Dashboard → Storage](/dashboard/storage), choose **Azure Blob Storage**, then
+In [Dashboard storage](/dashboard/storage), choose **Azure Blob Storage**, then
 enter the account name, container name, prefix and token. Supply only the query
 string, optionally starting with `?`.
 
@@ -77,7 +77,7 @@ also need a valid token.
 
 User-delegation tokens last at most seven days. Automate renewal through your
 own Azure identity and `PATCH /storage/destinations/{id}`, or renew manually in
-**Storage → Details → Replace credentials**. Saving a replacement requires a
+**Storage**, then **Details**, then **Replace credentials**. Saving a replacement requires a
 new connection check. Etchv does not silently extend Azure permissions.
 
 To generate a token with Azure CLI after signing in with an authorized identity:

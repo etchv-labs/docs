@@ -25,7 +25,7 @@ in your Google project. Create a workload identity pool with an **AWS** provider
 You will configure the exact role and organization subject in the next step.
 Use a dedicated pool for Etchv; do not grant access to every identity in a pool.
 
-In [Dashboard → Storage](/dashboard/storage), choose **Google Cloud Storage** and
+In [Dashboard storage](/dashboard/storage), choose **Google Cloud Storage** and
 **Keyless**, then enter your bucket, prefix, existing visibility, workload identity
 provider resource name and service account email. Alternatively, send this body to
 `POST /storage/destinations` with a `storage:write` admin API key:
