@@ -10,6 +10,18 @@ remains searchable and selectable. Page sizes, link annotations and document
 metadata are retained. The watermark textures are tied to the original layout;
 editing content or removing them can change recovery.
 
+## Choose sync or async
+
+| Mode | Endpoint | What you receive |
+| --- | --- | --- |
+| Synchronous | `POST /watermarks/documents` | `200` verified file, or `202` if processing continues |
+| Asynchronous | `POST /watermarks/documents/async` | `202` job receipt; retrieve the result later or use a webhook |
+
+Detection also supports both modes: `POST /watermarks/documents/detect` or
+`POST /watermarks/documents/detect/async`.
+
+See [sync and async examples](/docs/api/async) for the complete request and response flow.
+
 ## First supported profile
 
 - Passive, unencrypted PDFs with 1–8 unrotated pages, using standard page units.
@@ -61,7 +73,7 @@ Every new successful embedding saves the original and verified output in the
 `X-Source-Asset-ID`. Etchv-hosted files have 30-day downloads; customer-hosted results follow bucket retention. Records
 stay until deleted. Detection uploads do not create assets.
 
-## Background processing
+## Use asynchronous processing when it fits your workflow
 
 Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
 

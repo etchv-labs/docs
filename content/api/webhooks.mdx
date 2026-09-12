@@ -2,6 +2,10 @@
 
 Receive a signed JSON event when an asynchronous watermarking or detection job succeeds or fails. Your application can continue working while Etchv processes the file.
 
+Synchronous endpoints also remain available when you prefer to wait for the result.
+Webhooks are an optional async completion mechanism; they are not required for
+synchronous requests. [Compare both request modes](/docs/api/async).
+
 ## Create an endpoint
 
 Open [Dashboard → Webhooks](/dashboard/webhooks) or use the API. Organization owners and admins can manage endpoints; API access also requires `webhooks:write`. Read access requires `webhooks:read`.

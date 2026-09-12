@@ -71,7 +71,10 @@ curl -X POST \
   -F 'data={"recipient":"customer-123"}'
 ```
 
-Omit `webhook_id` if you prefer polling. Webhooks require an async endpoint.
+Storage works with **both synchronous and asynchronous requests**. The example
+above submits an async job. To wait synchronously, use `/watermarks/documents`
+without `/async` and omit `webhook_id`. With async, omit `webhook_id` if you prefer
+polling. [Compare both request modes](/docs/api/async).
 Destination and object key are part of the idempotency fingerprint: changing
 one while reusing an idempotency key returns `409`.
 

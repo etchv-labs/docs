@@ -11,7 +11,7 @@ secret or environment variable. In a local terminal:
 export ETCHV_API_KEY="YOUR_API_KEY"
 ```
 
-## Embed a watermark
+## Embed a watermark synchronously
 
 Send your image and a JSON object containing the reference data you want to
 associate with this copy. Replace `photo.jpg` with your own image.
@@ -58,3 +58,11 @@ Etchv stores original uploads and watermarked results by default; no storage
 configuration is needed. Save `X-Asset-ID` and `X-Source-Asset-ID` from a successful embedding response.
 They identify the output and original in your [asset library](/docs/api/assets),
 with 30-day downloads and records retained until deleted.
+
+## Prefer an asynchronous request?
+
+The example above uses the synchronous endpoint. To submit the same operation
+without waiting for processing, use `POST /watermarks/images/async` instead.
+It returns a `202` JSON job receipt; poll its result URL or optionally select a
+webhook. Images, PDFs and videos support both modes. See the paired
+[synchronous and asynchronous examples](/docs/api/async).

@@ -49,7 +49,9 @@ results in its own storage. No bucket or cloud account is required. Browse
 them in the [dashboard](/dashboard/assets), or manage them through the
 [asset API](/docs/api/assets). Downloads last 30 days; records stay until deleted.
 
-Run background workflows with the [async API](/docs/api/async), then poll for results or receive [signed webhooks](/docs/api/webhooks).
+Choose [synchronous or asynchronous requests](/docs/api/async) for watermarking
+and detection. Sync waits for the result; async returns a job receipt so you can
+collect it later by polling or receive [signed webhooks](/docs/api/webhooks).
 
 You can optionally [choose your own storage](/docs/storage) for watermarked
 results instead. Your bucket stores the result and controls retention; the Etchv

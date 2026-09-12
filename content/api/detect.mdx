@@ -2,6 +2,15 @@
 
 Inspects an image and attempts to recover an embedded Etchv identifier.
 
+## Choose sync or async
+
+| Mode | Endpoint | What you receive |
+| --- | --- | --- |
+| Synchronous | `POST /watermarks/images/detect` | `200` detection JSON |
+| Asynchronous | `POST /watermarks/images/detect/async` | `202` job receipt; retrieve the result later or use a webhook |
+
+See [sync and async examples](/docs/api/async) for the complete request and response flow.
+
 ## Request
 
 Authenticate with `X-API-Key` and the `watermarks:detect` scope.
@@ -45,6 +54,6 @@ partial protection from an entirely unmarked image. A successful multi-unit
 detection consumes one credit for the whole file. Large animations take longer
 because each frame is inspected.
 
-## Background processing
+## Use asynchronous processing when it fits your workflow
 
 Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).

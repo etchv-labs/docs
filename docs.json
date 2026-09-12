@@ -30,7 +30,7 @@
           "slug": "api/async",
           "file": "api/async.mdx",
           "title": "Sync and async",
-          "description": "Submit durable background jobs and receive results by polling or webhook."
+          "description": "Choose synchronous results or asynchronous jobs, with paired endpoints, examples and response handling."
         },
         {
           "slug": "api/webhooks",

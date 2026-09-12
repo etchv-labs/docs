@@ -41,7 +41,7 @@ A client timeout does not cancel the job. Resume with the request ID or resubmit
 same image/data and idempotency key. Terminal JSON has `status: "failed"`; retrying
 that key returns the same failure. See [embedding](/docs/api/embed) for retention.
 
-Image and PDF detection remain synchronous: SDKs do not retry those detections
+The standard image and PDF detection endpoints are synchronous (their `/async` alternatives use durable jobs): SDKs do not retry those detections
 automatically. Video detection uses durable jobs and automatic polling. Images and
 PDFs use one credit per operation; video uses one credit per started minute, per
 operation. Asset management and downloads consume no credits.

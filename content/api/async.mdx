@@ -1,38 +1,85 @@
 # Synchronous and asynchronous requests
 
-Use synchronous requests when your application wants to wait for a result. Use asynchronous requests for background workflows, batches, and longer files.
+Choose **synchronous** requests to wait for a result in the current request, or **asynchronous** requests to collect it later. Images, PDFs and videos support both modes.
 
 Both embedding modes use the same durable queue, credit reservation, processing retries, and final watermark verification. Async changes how you receive the result, not the quality of the output.
 
 | | Synchronous | Asynchronous |
 | --- | --- | --- |
 | Response | Result when ready; `202` if processing continues | `202` JSON job receipt after validation and durable acceptance |
-| Connection | Waits up to 20 seconds by default | Does not wait for watermark processing |
+| Connection | Waits for the result; watermarking and video detection have a bounded wait | Returns after upload validation and durable acceptance |
 | Completion | Follow the job if the response is `202` | Poll status or receive a signed webhook |
 | Best for | Interactive requests | Background processing and larger workloads |
 
 Etchv validates uploads and saves them in its own private storage before accepting them. A malformed file, invalid endpoint ID, or insufficient credits produces an error instead of a job receipt. Validation itself can take time for complex files.
 
-## Submit a job
+## Choose an endpoint
 
-Append `/async` to the media operation. The upload, format options, permissions, and credit costs are unchanged.
+Etchv supports **both synchronous and asynchronous requests** for every supported
+media type. The endpoint without a suffix is synchronous; append `/async` to
+submit a background job. Both use the same upload fields, format support and
+credit prices.
 
-| Operation | Endpoint | API key scope |
+| Operation | Synchronous endpoint | Asynchronous endpoint |
 | --- | --- | --- |
-| Embed image | `POST /watermarks/images/async` | `watermarks:embed` |
-| Detect image | `POST /watermarks/images/detect/async` | `watermarks:detect` |
-| Embed PDF | `POST /watermarks/documents/async` | `watermarks:embed` |
-| Detect PDF | `POST /watermarks/documents/detect/async` | `watermarks:detect` |
-| Embed video | `POST /watermarks/videos/async` | `watermarks:embed` |
-| Detect video | `POST /watermarks/videos/detect/async` | `watermarks:detect` |
+| Watermark an image | `POST /watermarks/images` | `POST /watermarks/images/async` |
+| Detect an image watermark | `POST /watermarks/images/detect` | `POST /watermarks/images/detect/async` |
+| Watermark a PDF | `POST /watermarks/documents` | `POST /watermarks/documents/async` |
+| Detect PDF watermarks | `POST /watermarks/documents/detect` | `POST /watermarks/documents/detect/async` |
+| Watermark a video | `POST /watermarks/videos` | `POST /watermarks/videos/async` |
+| Detect video watermarks | `POST /watermarks/videos/detect` | `POST /watermarks/videos/detect/async` |
+
+Use the `watermarks:embed` scope for watermarking or `watermarks:detect` for detection.
+There is no `/sync` suffix to add: the standard endpoint is the sync endpoint.
+
+## Watermark a file synchronously
+
+Send the file and reference data to the standard media endpoint. This example
+waits for a watermarked PDF in the same HTTP request:
+
+```bash
+curl 'https://api.etchv.com/watermarks/documents' \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: document_delivery_001' \
+  -F 'file=@document.pdf' \
+  -F 'data={"delivery":"delivery_001"}' \
+  -D response-headers.txt \
+  --output response-body
+```
+
+A `200 OK` response contains the verified file in its original format. Save it
+using the filename in `Content-Disposition`, and keep `X-Watermark-ID` with your
+record. Successful synchronous detection returns `200 OK` with detection JSON.
+
+### If a synchronous request takes longer
+
+Watermarking requests and video detection wait up to **20 seconds by default**.
+If processing is still running, Etchv returns `202 Accepted` with a job receipt
+instead of keeping the connection open indefinitely. Use its `result_url` to
+retrieve the result with the same API key. A `202` response body is JSON, so do
+not save it as a finished media file. The SDKs follow this continuation for you.
+
+Synchronous image and PDF detection return their detection response directly;
+they do not use this job continuation. Choose their `/async` endpoint for durable
+background detection. Webhooks are optional for async requests and are not
+required to use the synchronous API.
+
+## Watermark a file asynchronously
+
+Use `/async` when you want to submit work and collect the result later. Etchv
+validates and durably accepts the upload, then returns **`202 Accepted` JSON**
+without waiting for watermark processing. This example uses the same file and
+data as the synchronous request:
 
 ```bash
 curl 'https://api.etchv.com/watermarks/documents/async' \
   -H "X-API-Key: $ETCHV_API_KEY" \
-  -H 'Idempotency-Key: document_delivery_001' \
+  -H 'Idempotency-Key: document_delivery_002' \
   -F 'file=@document.pdf' \
   -F 'data={"delivery":"delivery_001"}'
 ```
+
+### Async acceptance response
 
 ```json
 {
@@ -55,13 +102,13 @@ curl 'https://api.etchv.com/watermarks/documents/async' \
 
 `Location` points to the status endpoint. The URLs are relative to `https://api.etchv.com` and require the same organization's API key and operation scope. They are not public download links.
 
-## Receive the result
+## Retrieve a pending result (either mode)
 
 Poll `status_url` every two seconds until `status` is `succeeded` or `failed`. Intermediate states are `queued`, `running`, and `retrying`. Download `result_url` after success: embedding returns the original media format; detection returns JSON with per-frame or per-page results. A successful detection job can legitimately report `watermarked: false`.
 
 Job results remain available for 24 hours. Embedded source and output assets also appear in the [asset library](/docs/api/assets), with records retained until deleted. Etchv storage has 30-day downloads by default; selected customer buckets control result retention. Async detection does not create library assets. Download promptly; retrying a webhook does not extend file availability.
 
-## Get a webhook instead of polling
+## Receive an async webhook instead of polling
 
 Create an endpoint in [Dashboard → Webhooks](/dashboard/webhooks), save its signing secret, and include its ID as the `webhook_id` query parameter:
 
@@ -83,7 +130,19 @@ Async replays always return a `202` receipt, even when the existing job has fini
 
 Failed processing releases reserved credits. Webhook delivery attempts and redeliveries do not consume credits. Processing has a 30-minute deadline and at most five attempts; durability does not mean an unsupported or unverifiable file will eventually succeed.
 
+## Try either mode in the dashboard
+
+In **Watermark media** or **Detect watermark**, choose **Synchronous** or
+**Asynchronous** under **Request mode**. Sync is selected by default and the
+dashboard follows any job continuation. Async shows the job receipt after
+acceptance; use **Check result** to retrieve it later. The copyable JSON and cURL
+examples follow your selected mode. Async requests can also select an optional
+webhook endpoint ID.
+
 ## SDKs
+
+The regular embed/detect methods wait for a result. The **Submit** methods return
+a background job receipt. Both choices are available in all six SDKs.
 
 All six SDKs offer explicit submission methods that return a receipt without polling: `submitEmbed` / `submitDetection` in Node.js and Java, `submit_embed` / `submit_detection` in Python and Rust, `SubmitEmbed` / `SubmitDetection` in Go, and `SubmitEmbedAsync` / `SubmitDetectionAsync` in C#.
 
