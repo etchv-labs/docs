@@ -62,3 +62,41 @@ A private download is proxied with server-side credentials; Etchv does not expos
 the write-capable container SAS to the browser. When a token expires, pending
 uploads retry. Replace `credentials`, verify the connection, then retry exhausted
 deliveries while the temporary verified output is still available (up to 30 days).
+
+## Renew access before expiry
+
+The dashboard shows the access token's expiry. The API returns the same
+non-secret timestamp as `credential_expires_at`; for a user-delegation SAS, this
+is the earlier of the SAS expiry and its delegation-key expiry. Expired or
+not-yet-valid tokens cannot be saved. An expired destination cannot be selected
+for a new request until you replace its token and test the connection again.
+Existing Azure files remain in your container, but authenticated Etchv downloads
+also need a valid token.
+
+User-delegation tokens last at most seven days. Automate renewal through your
+own Azure identity and `PATCH /storage/destinations/{id}`, or renew manually in
+**Storage → Details → Replace credentials**. Saving a replacement requires a
+new connection check. Etchv does not silently extend Azure permissions.
+
+To generate a token with Azure CLI after signing in with an authorized identity:
+
+```bash
+az storage container generate-sas \
+  --account-name YOUR_STORAGE_ACCOUNT \
+  --name watermarked-assets \
+  --auth-mode login --as-user \
+  --permissions rcw --https-only \
+  --expiry YOUR_UTC_EXPIRY --output tsv
+```
+
+The identity needs blob read/write access on the container and permission to
+request a delegation key on the storage account. A container-scoped custom role
+plus **Storage Blob Delegator** on that account avoids granting general storage
+administration. Keep the generated token out of logs and source control.
+See Microsoft's [user-delegation SAS guide](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-cli)
+for role assignment and expiry details. Account-key authentication can remain
+disabled when using user-delegation tokens.
+
+GitHub OIDC can automate this token generation in your own integration. Etchv's
+Azure connection still uses the scoped SAS you supply; direct Azure workload
+identity authentication in the Etchv API is not currently offered.
