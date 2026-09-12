@@ -10,7 +10,9 @@ native-format image with the identifier in a response header, or `202` while dur
 | Synchronous | `POST /watermarks/images` | `200` verified file, or `202` if processing continues |
 | Asynchronous | `POST /watermarks/images/async` | `202` job receipt; retrieve the result later or use a webhook |
 
-See [sync and async examples](/docs/api/async) for the complete request and response flow.
+See [sync and async examples](/docs/api/async) for request and response handling.
+For signed completion or failure events, pass `webhook_id` when submitting an
+async job. [Set up webhooks](/docs/api/webhooks).
 
 ## Request
 
@@ -115,10 +117,6 @@ file bytes or compression settings is not promised.
 
 GIF uses palette-aware embedding and retains animation timing and loop count. Each frame must be at most one megapixel.
 See [image limits](/docs/api/errors) for frame, page and layered-file limits.
-
-## Use asynchronous processing when it fits your workflow
-
-Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
 
 ## Choose where results are stored
 

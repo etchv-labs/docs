@@ -20,7 +20,9 @@ editing content or removing them can change recovery.
 Detection also supports both modes: `POST /watermarks/documents/detect` or
 `POST /watermarks/documents/detect/async`.
 
-See [sync and async examples](/docs/api/async) for the complete request and response flow.
+See [sync and async examples](/docs/api/async) for request and response handling.
+For signed completion or failure events, pass `webhook_id` when submitting an
+async job. [Set up webhooks](/docs/api/webhooks).
 
 ## First supported profile
 
@@ -72,10 +74,6 @@ Every new successful embedding saves the original and verified output in the
 [asset library](/docs/api/assets). The response includes `X-Asset-ID` and
 `X-Source-Asset-ID`. Etchv-hosted files have 30-day downloads; customer-hosted results follow bucket retention. Records
 stay until deleted. Detection uploads do not create assets.
-
-## Use asynchronous processing when it fits your workflow
-
-Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
 
 ## Choose where results are stored
 

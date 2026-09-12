@@ -23,6 +23,10 @@ confirms cleanup. Until delivery, `staging_expires_at` identifies the recovery
 window. A failed upload stays visible and retryable, rather than silently
 changing the selected destination back to Etchv.
 
+Select a bucket for new results with `storage_destination_id` and optional
+`storage_key` on the embedding request. Delivery retries reuse verified bytes
+without another watermarking charge. [Storage setup and retries](/docs/storage).
+
 Original uploads remain in Etchv storage for 30 days. Connecting a destination
 does not move existing outputs automatically; select **Move to my storage** for
 an available Etchv-hosted result. Each result has one selected storage destination.
@@ -176,14 +180,3 @@ Deletion cannot remove a watermark from copies already downloaded elsewhere.
 All six official SDKs support listing, reading, updating,
 downloading and deleting assets. Their embedding results expose both asset IDs.
 Use an asset's current version when editing, and preserve your downloaded bytes.
-
-## Choose where results are stored
-
-Etchv storage is the default, with 30-day file downloads and no setup required.
-If you prefer to use your own S3, Google Cloud Storage or Azure Blob bucket for
-watermarked results, select it with `storage_destination_id` and optional
-`storage_key`. Your bucket becomes the result’s storage location. Etchv removes
-its temporary output after confirmed delivery; your bucket’s retention applies.
-Existing Etchv results can also be moved from the dashboard.
-The upload has its own durable delivery status and retries without another
-watermarking charge. [Read the storage guide](/docs/storage).

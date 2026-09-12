@@ -1,9 +1,9 @@
+Official server-side Python client for Etchv forensic image watermarking.
+Requires Python 3.14; development and CI use Python 3.14.7. MIT licensed.
+
 Etchv supports synchronous and asynchronous API requests. The regular embed and
 detect methods wait for a result; the explicit **Submit** methods return a
 background job receipt. [Compare both request modes](/docs/api/async).
-
-Official server-side Python client for Etchv forensic image watermarking.
-Requires Python 3.14; development and CI use Python 3.14.7. MIT licensed.
 
 ## Install
 
@@ -15,7 +15,7 @@ pip install "git+https://github.com/etchv-labs/python-sdk.git"
 
 ## Embed and detect
 
-Create an API key in [your Etchv account](https://etchv.com).
+Create an API key in [your Etchv dashboard](/dashboard/api-keys).
 Set `ETCHV_API_KEY` in your environment. The key needs `watermarks:embed` and
 `watermarks:detect` scopes and an active plan with available credits.
 
@@ -46,6 +46,8 @@ Optional constructor arguments: `base_url` (default `https://api.etchv.com`),
 `timeout` in seconds (default 120), and an HTTPX `transport` for tests.
 Both operations accept `filename` and `idempotency_key` keyword arguments.
 
+## Errors and recovery
+
 Catch `EtchvError` for HTTP/protocol failures; inspect `status_code`, `detail`,
 and `request_id`. Embedding deadlines raise status_code 0 with recovery identifiers; detection transport errors propagate separately.
 401/403 indicate authentication/scopes, 402 unavailable credits or billing,
@@ -60,10 +62,8 @@ Detection does not automatically retry. Neither operation follows redirects.
 Keep API keys on your server. Confidence is mean decoded-bit certainty, not a
 guarantee of exact recovery after cropping, compression, or editing.
 
-
 To resume a known embedding job, call `get_embed_result(request_id)`. Supply your own stable
 idempotency key when embedding if you need recovery across process restarts.
-
 
 Version 0.8.0 supports native image, PDF and video results. Use the returned filename
 when saving bytes; older clients that require PNG must be upgraded. Detection's
@@ -100,7 +100,7 @@ replaced, not merged, and does not change the embedded watermark. Asset operatio
 consume no credits. Downloads require authentication and return the original file
 format. Single and bulk deletion methods are also available; batches contain at
 most 50 IDs and delete atomically. Deleting an output blocks its job result replay.
-See [the asset API](https://etchv.com/docs/api/assets) for the complete contract.
+See [the asset API](/docs/api/assets) for the complete contract.
 
 ## Async jobs and webhooks
 
@@ -112,9 +112,9 @@ job = client.submit_embed("documents", pdf_bytes, {"delivery": "delivery_001"},
 status = client.get_job(job["request_id"])
 ```
 
-Use the corresponding submission method for detection without forensic data. For detection status, set the status method’s `detect` argument to true. Existing embed/detect methods continue waiting for results.
+Use the corresponding submission method for detection without forensic data. For detection status, set the status method’s `detect` argument to true.
 
-Create an endpoint in the [Etchv dashboard](https://etchv.com/dashboard/webhooks), then pass its ID when submitting. Persist your idempotency key before the upload so a lost receipt can be recovered safely. Download from the authenticated result URL after success, or use the existing result method. See the [async guide](https://etchv.com/docs/api/async) and [webhook verification guide](https://etchv.com/docs/api/webhooks).
+Create an endpoint in the [Etchv dashboard](/dashboard/webhooks), then pass its ID when submitting. Persist your idempotency key before the upload so a lost receipt can be recovered safely. Download from the authenticated result URL after success, or use the existing result method. See the [async guide](/docs/api/async) and [webhook verification guide](/docs/api/webhooks).
 
 ## Choose where results are stored
 
@@ -132,7 +132,6 @@ Original uploads retain their existing 30-day Etchv storage policy.
 job = client.submit_embed("documents", pdf_bytes, {"recipient": "customer-123"},
     filename="report.pdf", storage_destination_id=destination_id,
     storage_key="reports/watermarked.pdf", idempotency_key="report-export-001")
-# After watermark completion, the upload continues independently.
 # After the watermark job reports succeeded:
 delivery = client.get_storage_delivery(job["storage_delivery_id"])
 ```
@@ -144,4 +143,4 @@ or handle a terminal failure. Upload retries do not watermark again or charge
 another credit. Binary embedding results include a storage delivery ID too.
 
 Use `storage:read` to inspect deliveries. Storage options do not apply to detection.
-See the [storage setup, retention and retry guide](https://etchv.com/docs/storage).
+See the [storage setup, retention and retry guide](/docs/storage).

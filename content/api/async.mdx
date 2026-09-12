@@ -1,10 +1,8 @@
-# Synchronous and asynchronous requests
-
 Choose **synchronous** requests to wait for a result in the current request, or **asynchronous** requests to collect it later. Images, PDFs and videos support both modes.
 
 Both embedding modes use the same durable queue, credit reservation, processing retries, and final watermark verification. Async changes how you receive the result, not the quality of the output.
 
-| | Synchronous | Asynchronous |
+| Behavior | Synchronous | Asynchronous |
 | --- | --- | --- |
 | Response | Result when ready; `202` if processing continues | `202` JSON job receipt after validation and durable acceptance |
 | Connection | Waits for the result; watermarking and video detection have a bounded wait | Returns after upload validation and durable acceptance |
@@ -141,12 +139,17 @@ webhook endpoint ID.
 
 ## SDKs
 
-The regular embed/detect methods wait for a result. The **Submit** methods return
-a background job receipt. Both choices are available in all six SDKs.
+Regular embed/detect methods wait for a result. To receive a background job
+receipt without polling, use the submission methods for your SDK:
 
-All six SDKs offer explicit submission methods that return a receipt without polling: `submitEmbed` / `submitDetection` in Node.js and Java, `submit_embed` / `submit_detection` in Python and Rust, `SubmitEmbed` / `SubmitDetection` in Go, and `SubmitEmbedAsync` / `SubmitDetectionAsync` in C#.
+| SDK | Embed | Detect |
+| --- | --- | --- |
+| [Node.js](/docs/sdks/node) / [Java](/docs/sdks/java) | `submitEmbed` | `submitDetection` |
+| [Python](/docs/sdks/python) / [Rust](/docs/sdks/rust) | `submit_embed` | `submit_detection` |
+| [Go](/docs/sdks/go) | `SubmitEmbed` | `SubmitDetection` |
+| [C#](/docs/sdks/csharp) | `SubmitEmbedAsync` | `SubmitDetectionAsync` |
 
-Their existing embedding and detection methods continue waiting for a result. In C#, the `Async` suffix on an existing method describes nonblocking client I/O; use **Submit** methods for a server-side background job.
+In C#, the `Async` suffix on an existing method describes nonblocking client I/O; use **Submit** methods for a server-side background job.
 
 ## Choose where results are stored
 

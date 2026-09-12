@@ -1,8 +1,8 @@
+Use the [Etchv Java SDK](https://github.com/etchv-labs/java-sdk) with Java 21+ and Maven 3.9+.
+
 Etchv supports synchronous and asynchronous API requests. The regular embed and
 detect methods wait for a result; the explicit **Submit** methods return a
 background job receipt. [Compare both request modes](/docs/api/async).
-
-Use the [Etchv Java SDK](https://github.com/etchv-labs/java-sdk) with Java 21+ and Maven 3.9+.
 
 ## Install
 
@@ -78,7 +78,7 @@ replaced, not merged, and does not change the embedded watermark. Asset operatio
 consume no credits. Downloads require authentication and return the original file
 format. Single and bulk deletion methods are also available; batches contain at
 most 50 IDs and delete atomically. Deleting an output blocks its job result replay.
-See [the asset API](https://etchv.com/docs/api/assets) for the complete contract.
+See [the asset API](/docs/api/assets) for the complete contract.
 
 ## Async jobs and webhooks
 
@@ -90,9 +90,9 @@ var job = client.submitEmbed("documents", pdfBytes, Map.of("delivery", "delivery
 var status = client.getJob(job.get("request_id").getAsString(), false);
 ```
 
-Use the corresponding submission method for detection without forensic data. For detection status, set the status method’s `detect` argument to true. Existing embed/detect methods continue waiting for results.
+Use the corresponding submission method for detection without forensic data. For detection status, set the status method’s `detect` argument to true.
 
-Create an endpoint in the [Etchv dashboard](https://etchv.com/dashboard/webhooks), then pass its ID when submitting. Persist your idempotency key before the upload so a lost receipt can be recovered safely. Download from the authenticated result URL after success, or use the existing result method. See the [async guide](https://etchv.com/docs/api/async) and [webhook verification guide](https://etchv.com/docs/api/webhooks).
+Create an endpoint in the [Etchv dashboard](/dashboard/webhooks), then pass its ID when submitting. Persist your idempotency key before the upload so a lost receipt can be recovered safely. Download from the authenticated result URL after success, or use the existing result method. See the [async guide](/docs/api/async) and [webhook verification guide](/docs/api/webhooks).
 
 ## Choose where results are stored
 
@@ -122,4 +122,4 @@ or handle a terminal failure. Upload retries do not watermark again or charge
 another credit. Binary embedding results include a storage delivery ID too.
 
 Use `storage:read` to inspect deliveries. Storage options do not apply to detection.
-See the [storage setup, retention and retry guide](https://etchv.com/docs/storage).
+See the [storage setup, retention and retry guide](/docs/storage).

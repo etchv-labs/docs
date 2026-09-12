@@ -10,7 +10,10 @@ is the overview at `/docs`.
 
 Use Markdown headings starting at `##` (the website supplies the page title),
 fenced code blocks with language labels, links, and tables. Links to other docs
-use their complete site path, such as `/docs/quickstart`.
+use their complete site path, such as `/docs/quickstart`. Do not repeat the page
+title in the body or add a second section covering the same guidance; link to
+the relevant section or reference page instead. Keep introductions brief and
+use specific section headings to break up long explanations.
 
 The website also provides these MDX components:
 
