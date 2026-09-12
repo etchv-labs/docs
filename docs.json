@@ -27,6 +27,18 @@
       "title": "API reference",
       "pages": [
         {
+          "slug": "api/async",
+          "file": "api/async.mdx",
+          "title": "Sync and async",
+          "description": "Submit durable background jobs and receive results by polling or webhook."
+        },
+        {
+          "slug": "api/webhooks",
+          "file": "api/webhooks.mdx",
+          "title": "Webhooks",
+          "description": "Receive signed events, inspect delivery attempts and retry failed deliveries."
+        },
+        {
           "slug": "api/embed",
           "file": "api/embed.mdx",
           "title": "Embed an image",

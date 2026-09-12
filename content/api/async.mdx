@@ -1,0 +1,90 @@
+# Synchronous and asynchronous requests
+
+Use synchronous requests when your application wants to wait for a result. Use asynchronous requests for background workflows, batches, and longer files.
+
+Both embedding modes use the same durable queue, credit reservation, processing retries, and final watermark verification. Async changes how you receive the result, not the quality of the output.
+
+| | Synchronous | Asynchronous |
+| --- | --- | --- |
+| Response | Result when ready; `202` if processing continues | `202` JSON job receipt after validation and durable acceptance |
+| Connection | Waits up to 20 seconds by default | Does not wait for watermark processing |
+| Completion | Follow the job if the response is `202` | Poll status or receive a signed webhook |
+| Best for | Interactive requests | Background processing and larger workloads |
+
+Uploads must finish validation and private storage before Etchv accepts them. A malformed file, invalid endpoint ID, or insufficient credits produces an error instead of a job receipt. Validation itself can take time for complex files.
+
+## Submit a job
+
+Append `/async` to the media operation. The upload, format options, permissions, and credit costs are unchanged.
+
+| Operation | Endpoint | API key scope |
+| --- | --- | --- |
+| Embed image | `POST /watermarks/images/async` | `watermarks:embed` |
+| Detect image | `POST /watermarks/images/detect/async` | `watermarks:detect` |
+| Embed PDF | `POST /watermarks/documents/async` | `watermarks:embed` |
+| Detect PDF | `POST /watermarks/documents/detect/async` | `watermarks:detect` |
+| Embed video | `POST /watermarks/videos/async` | `watermarks:embed` |
+| Detect video | `POST /watermarks/videos/detect/async` | `watermarks:detect` |
+
+```bash
+curl 'https://api.etchv.com/watermarks/documents/async' \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: document_delivery_001' \
+  -F 'file=@document.pdf' \
+  -F 'data={"delivery":"delivery_001"}'
+```
+
+```json
+{
+  "request_id": "req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "status": "queued",
+  "operation": "embed",
+  "format": "PDF",
+  "frame_count": 2,
+  "credits": 1,
+  "attempts": 0,
+  "webhook_id": null,
+  "asset_id": null,
+  "source_asset_id": null,
+  "status_url": "/watermarks/jobs/req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "result_url": "/watermarks/jobs/req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/result",
+  "error_code": null,
+  "result_expires_at": null
+}
+```
+
+`Location` points to the status endpoint. The URLs are relative to `https://api.etchv.com` and require the same organization's API key and operation scope. They are not public download links.
+
+## Receive the result
+
+Poll `status_url` every two seconds until `status` is `succeeded` or `failed`. Intermediate states are `queued`, `running`, and `retrying`. Download `result_url` after success: embedding returns the original media format; detection returns JSON with per-frame or per-page results. A successful detection job can legitimately report `watermarked: false`.
+
+Job results remain available for 24 hours. Embedded source and output assets also appear in the [asset library](/docs/api/assets), with 30-day file downloads and records retained until deleted. Async detection does not create library assets. Download promptly; retrying a webhook does not extend file availability.
+
+## Get a webhook instead of polling
+
+Create an endpoint in [Dashboard → Webhooks](/dashboard/webhooks), save its signing secret, and include its ID as the `webhook_id` query parameter:
+
+```bash
+curl "https://api.etchv.com/watermarks/images/async?webhook_id=$ETCHV_WEBHOOK_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: image_delivery_001' \
+  -F 'file=@image.png' \
+  -F 'data={"delivery":"delivery_001"}'
+```
+
+Only the selected endpoint receives that job's terminal event. Endpoints belong to an organization and must be enabled when the job is first accepted. See [webhooks](/docs/api/webhooks) for payloads, signature verification, and retries.
+
+## Retry safely
+
+Choose and persist an `Idempotency-Key` before sending a request. After a timeout or lost response, repeat the same file, data, operation, and webhook ID with that key. Etchv returns the existing job without reserving another credit. A changed request with the same key returns `409`.
+
+Async replays always return a `202` receipt, even when the existing job has finished. Check its `status`; a receipt does not imply a new job. A replay does not emit another webhook. Use the delivery redelivery control if needed.
+
+Failed processing releases reserved credits. Webhook delivery attempts and redeliveries do not consume credits. Processing has a 30-minute deadline and at most five attempts; durability does not mean an unsupported or unverifiable file will eventually succeed.
+
+## SDKs
+
+All six SDKs offer explicit submission methods that return a receipt without polling: `submitEmbed` / `submitDetection` in Node.js and Java, `submit_embed` / `submit_detection` in Python and Rust, `SubmitEmbed` / `SubmitDetection` in Go, and `SubmitEmbedAsync` / `SubmitDetectionAsync` in C#.
+
+Their existing embedding and detection methods continue waiting for a result. In C#, the `Async` suffix on an existing method describes nonblocking client I/O; use **Submit** methods for a server-side background job.

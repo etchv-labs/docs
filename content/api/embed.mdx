@@ -106,3 +106,7 @@ file bytes or compression settings is not promised.
 
 GIF uses palette-aware embedding and retains animation timing and loop count. Each frame must be at most one megapixel.
 See [image limits](/docs/api/errors) for frame, page and layered-file limits.
+
+## Background processing
+
+Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).

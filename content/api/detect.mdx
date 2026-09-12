@@ -44,3 +44,7 @@ If only some units contain a watermark, or their identifiers differ, the top-lev
 partial protection from an entirely unmarked image. A successful multi-unit
 detection consumes one credit for the whole file. Large animations take longer
 because each frame is inspected.
+
+## Background processing
+
+Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).

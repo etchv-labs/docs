@@ -60,3 +60,7 @@ Every new successful embedding saves the original and verified output in the
 [asset library](/docs/api/assets). The response includes `X-Asset-ID` and
 `X-Source-Asset-ID`. Files remain downloadable there for 30 days, and records
 stay until deleted. Detection uploads do not create assets.
+
+## Background processing
+
+Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
