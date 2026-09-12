@@ -1,5 +1,5 @@
-Every new successful embedding job saves two assets: the original upload and the
-verified watermarked file. This works for all supported image, PDF and video
+Etchv automatically stores two assets for every successful embedding job: the
+original upload and the verified watermarked file. No customer storage setup is required. This works for all supported image, PDF and video
 formats. The output's `parent_asset_id` points to its original.
 
 Use the [Assets dashboard](/dashboard/assets) or the API to browse, download,
@@ -11,7 +11,8 @@ before the asset library launched are not backfilled.
 **Original and watermarked files are downloadable for 30 days from completion.**
 The record, including your name and metadata, stays until you delete it. After
 expiry, `file_available` is `false`, `download_url` is `null`, and downloading
-returns `410`. Save copies in your own storage for longer retention.
+returns `410`. If you want to keep file copies beyond 30 days, you can download
+them or optionally [connect your own storage](/docs/storage).
 
 The job result endpoint remains available for 24 hours. Its response includes
 `X-Asset-ID` and `X-Source-Asset-ID`; successful job status responses also include
@@ -161,10 +162,13 @@ All six official SDKs support listing, reading, updating,
 downloading and deleting assets. Their embedding results expose both asset IDs.
 Use an asset's current version when editing, and preserve your downloaded bytes.
 
-## Customer-owned storage
+## Optional cloud storage
 
-Export verified watermarked outputs to your own S3, Google Cloud Storage or Azure
-Blob destination. Pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or export an existing watermarked asset from the dashboard.
+Etchv automatically stores your original and watermarked files in its asset
+library, with 30-day downloads. No storage setup is required.
+
+If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
+destination, pass `storage_destination_id` and optional `storage_key` on an
+embedding request, or copy an existing watermarked asset from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).

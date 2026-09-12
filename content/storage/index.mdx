@@ -1,12 +1,20 @@
-Store verified watermarked images, PDFs and videos in your own Amazon S3 bucket,
-Google Cloud Storage bucket, or Azure Blob Storage container.
+Etchv stores every successful watermarked result and its original upload in your
+Etchv asset library automatically. Files are available to download for 30 days;
+asset records remain until you delete them. **You do not need your own bucket,
+cloud account, or storage configuration to use Etchv.**
 
-Connect a destination in [Dashboard → Storage](/dashboard/storage), test its
-permissions, then select it when watermarking. You can also export an existing
-watermarked asset from its ID. No extra watermarking credits are charged for an
-export or upload retry.
+If you prefer to keep an additional copy in your own infrastructure, you can
+optionally connect Amazon S3, Google Cloud Storage, or Azure Blob Storage.
+Your Etchv copy is still saved as usual.
 
-## How it works
+## Add an optional cloud copy
+
+If you choose this option, connect and test a destination in
+[Dashboard → Storage](/dashboard/storage), then select it when watermarking.
+You can also copy an existing watermarked asset. Exports and upload retries
+consume no additional watermarking credits.
+
+## How an optional export works
 
 1. Etchv watermarks the file and verifies its native output.
 2. The verified result and a storage delivery are committed together.
@@ -19,7 +27,8 @@ or `watermark.embed.succeeded` event confirms watermarking; it does **not** conf
 that your cloud upload has finished. Wait for delivery status `stored` or the
 `storage.delivery.succeeded` event before using the cloud object.
 
-Etchv keeps its usual 30-day asset copy. Objects in your storage follow **your**
+Etchv stores the original and verified result for 30 days whether or not you
+connect your own storage. Objects in your storage follow **your**
 lifecycle and access policies. Etchv never changes bucket permissions, sets public
 object ACLs, overwrites a different object, or automatically deletes your objects.
 
@@ -37,7 +46,8 @@ No delete or bucket-list permission is needed for normal exports.
 
 ## Select storage on a request
 
-The same query parameters work on `/watermarks/images`, `/watermarks/documents`,
+Leave these parameters out to use Etchv’s included storage alone. If you choose
+an additional cloud copy, the same query parameters work on `/watermarks/images`, `/watermarks/documents`,
 `/watermarks/videos` and their `/async` equivalents. Detection has no output file
 to export and rejects storage options.
 

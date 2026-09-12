@@ -11,7 +11,7 @@ Both embedding modes use the same durable queue, credit reservation, processing 
 | Completion | Follow the job if the response is `202` | Poll status or receive a signed webhook |
 | Best for | Interactive requests | Background processing and larger workloads |
 
-Uploads must finish validation and private storage before Etchv accepts them. A malformed file, invalid endpoint ID, or insufficient credits produces an error instead of a job receipt. Validation itself can take time for complex files.
+Etchv validates uploads and saves them in its own private storage before accepting them. A malformed file, invalid endpoint ID, or insufficient credits produces an error instead of a job receipt. Validation itself can take time for complex files.
 
 ## Submit a job
 
@@ -89,10 +89,13 @@ All six SDKs offer explicit submission methods that return a receipt without pol
 
 Their existing embedding and detection methods continue waiting for a result. In C#, the `Async` suffix on an existing method describes nonblocking client I/O; use **Submit** methods for a server-side background job.
 
-## Customer-owned storage
+## Optional cloud storage
 
-Export verified watermarked outputs to your own S3, Google Cloud Storage or Azure
-Blob destination. Pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or export an existing watermarked asset from the dashboard.
+Etchv automatically stores your original and watermarked files in its asset
+library, with 30-day downloads. No storage setup is required.
+
+If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
+destination, pass `storage_destination_id` and optional `storage_key` on an
+embedding request, or copy an existing watermarked asset from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).

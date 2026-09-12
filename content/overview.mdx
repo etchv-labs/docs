@@ -44,8 +44,12 @@ metadata. Embedding retries and polls durable jobs automatically within the clie
 
 ## Keep your files connected
 
-New successful embeddings save an original asset and its verified output. Browse
+Etchv automatically stores every original upload and successful watermarked
+result in its own storage. No bucket or cloud account is required. Browse
 them in the [dashboard](/dashboard/assets), or manage them through the
 [asset API](/docs/api/assets). Downloads last 30 days; records stay until deleted.
 
 Run background workflows with the [async API](/docs/api/async), then poll for results or receive [signed webhooks](/docs/api/webhooks).
+
+You can optionally [connect your own storage](/docs/storage) to receive an
+additional cloud copy while Etchv continues saving files to your asset library.

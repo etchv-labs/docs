@@ -111,10 +111,13 @@ See [image limits](/docs/api/errors) for frame, page and layered-file limits.
 
 Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
 
-## Customer-owned storage
+## Optional cloud storage
 
-Export verified watermarked outputs to your own S3, Google Cloud Storage or Azure
-Blob destination. Pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or export an existing watermarked asset from the dashboard.
+Etchv automatically stores your original and watermarked files in its asset
+library, with 30-day downloads. No storage setup is required.
+
+If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
+destination, pass `storage_destination_id` and optional `storage_key` on an
+embedding request, or copy an existing watermarked asset from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).
