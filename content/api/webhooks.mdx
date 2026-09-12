@@ -110,3 +110,17 @@ The dashboard shows delivery state, attempts, response status, event payload, an
 Delivery listing returns `data` and `next_cursor`; pass the cursor as `after` for the next page. Delivery records and payloads expire after 30 days. The last 30 attempts are retained per event. A delivered, exhausted, or cancelled event can be manually redelivered up to ten times while its record remains available. The endpoint must be enabled. A pending event cannot be redelivered concurrently.
 
 Disabling or deleting an endpoint cancels its deliveries when the dispatcher next picks them up. An already in-flight delivery may still arrive. Re-enabling does not automatically requeue cancelled events; redeliver them explicitly. Deleting an endpoint is permanent; use disable if you may need it again.
+
+## Storage delivery events
+
+When an async embedding request selects both `webhook_id` and
+`storage_destination_id`, the endpoint also receives `storage.delivery.succeeded`
+or `storage.delivery.failed` after the cloud upload reaches a terminal state.
+`watermark.embed.succeeded` confirms watermark verification, not cloud delivery.
+
+Storage event `data` includes `delivery_id`, `asset_id`, `request_id`,
+`destination_id`, `status`, `error_code`, `uri` and `public_url` (null for private
+storage). These events use the same signature verification and durable webhook
+retries described above. Deduplicate by event ID; do not depend on ordering
+between watermark and storage events. A manual upload retry creates a new
+terminal event. [Storage delivery details](/docs/storage).

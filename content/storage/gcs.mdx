@@ -1,0 +1,58 @@
+Export verified native files to a public or private Google Cloud Storage bucket.
+The first release uses a dedicated service account JSON key.
+
+## 1. Grant bucket-scoped access
+
+Create a dedicated service account and a custom role containing:
+
+- `storage.objects.create`
+- `storage.objects.get`
+
+Grant that role on the destination bucket. For a shared bucket, use an IAM
+condition to restrict the resource name to your chosen prefix, including the
+connection probe. Do not grant project-wide administrator permissions.
+[Google documents Cloud Storage permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions).
+
+Create a JSON key for that service account. If your organization disables service
+account keys, this authentication method cannot be used; workload identity
+federation is a tracked follow-up.
+
+## 2. Connect and verify
+
+In [Dashboard → Storage](/dashboard/storage), choose **Google Cloud Storage** and
+enter the bucket name, prefix, existing visibility and service account JSON.
+The standard token endpoint must be `https://oauth2.googleapis.com/token`.
+Credentials are encrypted and never returned in API responses.
+
+For API setup, the create body is:
+
+```json
+{
+  "name": "Production GCS",
+  "provider": "gcs",
+  "bucket": "YOUR_BUCKET",
+  "prefix": "etchv",
+  "visibility": "private",
+  "credentials": "SERVICE_ACCOUNT_JSON_ENCODED_AS_A_JSON_STRING"
+}
+```
+
+Send it to `POST /storage/destinations` with a `storage:write` admin key. Then
+`POST /storage/destinations/{id}/verify` or click **Test connection**. The check
+writes and reads a small probe. Keep the JSON key out of application bundles,
+source control and logs.
+
+## 3. Store outputs
+
+Pass the returned destination ID to any [embedding endpoint](/docs/storage).
+Private records contain a `gs://bucket/key` URI; public records also contain a
+`https://storage.googleapis.com/bucket/key` URL. Public visibility must already be
+configured on the bucket. Etchv does not alter IAM policy or object ACLs.
+
+Uploads use generation preconditions to prevent overwriting an existing object.
+[Google documents generation preconditions](https://cloud.google.com/storage/docs/request-preconditions).
+
+To rotate a key, replace `credentials` with `PATCH /storage/destinations/{id}`,
+verify the connection, then revoke the previous key in Google Cloud. Your bucket
+lifecycle controls retention; deleting an Etchv record does not delete its cloud
+object.

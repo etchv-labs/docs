@@ -77,6 +77,35 @@
       ]
     },
     {
+      "title": "Customer storage",
+      "pages": [
+        {
+          "slug": "storage",
+          "file": "storage/index.mdx",
+          "title": "Storage overview",
+          "description": "Connect your cloud and durably export verified watermarked assets."
+        },
+        {
+          "slug": "storage/s3",
+          "file": "storage/s3.mdx",
+          "title": "Amazon S3",
+          "description": "Configure a public or private S3 destination with an IAM role."
+        },
+        {
+          "slug": "storage/gcs",
+          "file": "storage/gcs.mdx",
+          "title": "Google Cloud Storage",
+          "description": "Connect a bucket using a dedicated service account."
+        },
+        {
+          "slug": "storage/azure",
+          "file": "storage/azure.mdx",
+          "title": "Azure Blob Storage",
+          "description": "Connect a container using a limited SAS token."
+        }
+      ]
+    },
+    {
       "title": "SDKs",
       "pages": [
         {

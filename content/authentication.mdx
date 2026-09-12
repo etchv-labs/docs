@@ -42,3 +42,8 @@ Existing keys keep their scopes. Create a replacement key to add asset permissio
 Asset operations do not consume watermarking credits. See the [asset API](/docs/api/assets).
 
 Webhook API access uses `webhooks:read` for endpoint and delivery inspection, and `webhooks:write` for endpoint management and redelivery. Management also requires an organization owner or admin. Submitting a job with a webhook only requires the job’s existing embed or detect scope.
+
+Storage adds `storage:read` (read destinations/deliveries and download exported
+objects) and `storage:write` (owner/admin connection management, verification,
+exports and retries). Existing `watermarks:embed` keys can select a verified
+destination in their organization. [Storage setup](/docs/storage).

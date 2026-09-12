@@ -1,0 +1,58 @@
+Export verified images, PDFs and videos to an Azure Blob Storage container using
+a container-scoped SAS token. Both private and already-public containers work.
+Test the connection before using it for production.
+
+## 1. Create a container SAS
+
+Use a dedicated container in a standard Azure public-cloud storage account.
+Generate a SAS with:
+
+- Resource: **container** (`sr=c`).
+- Permissions: **read, create, write** (`sp=rcw`).
+- Protocol: **HTTPS only** (`spr=https`).
+- An expiry appropriate for your rotation policy.
+
+A user-delegation SAS is preferred when available; its validity is bounded by the
+delegation key. You will need to rotate expiring tokens. Do not supply an account
+key, connection string, account-wide SAS, URL, or private endpoint.
+[Microsoft documents SAS types and scope](https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview).
+
+## 2. Connect and verify
+
+In [Dashboard → Storage](/dashboard/storage), choose **Azure Blob Storage**, then
+enter the account name, container name, prefix and token. Supply only the query
+string, optionally starting with `?`.
+
+```json
+{
+  "name": "Production Azure",
+  "provider": "azure",
+  "account": "YOUR_STORAGE_ACCOUNT",
+  "bucket": "watermarked-assets",
+  "prefix": "etchv",
+  "visibility": "private",
+  "credentials": "sv=...&sr=c&sp=rcw&spr=https&se=...&sig=..."
+}
+```
+
+Send this body to `POST /storage/destinations` with a `storage:write` admin key.
+Then click **Test connection**, or `POST /storage/destinations/{id}/verify`. The
+probe checks both write and read access. Tokens are encrypted and never returned
+in API responses or download URLs.
+
+## 3. Store and retrieve
+
+Pass the destination ID to an [embedding request](/docs/storage). Etchv uploads a
+block blob while preserving the original bytes and MIME type. Existing different
+objects are never overwritten.
+
+Private records include an `azure://account/container/key` reference. Use your
+Azure credentials or Etchv’s authenticated delivery download endpoint. For a
+container you have already made public, select public visibility to receive a
+direct `https://account.blob.core.windows.net/container/key` URL without a SAS.
+Etchv never changes anonymous-access settings.
+
+A private download is proxied with server-side credentials; Etchv does not expose
+the write-capable container SAS to the browser. When a token expires, pending
+uploads retry. Replace `credentials`, verify the connection, then retry exhausted
+deliveries while Etchv’s 30-day copy is still available.

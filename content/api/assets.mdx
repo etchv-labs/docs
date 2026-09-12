@@ -160,3 +160,11 @@ Deletion cannot remove a watermark from copies already downloaded elsewhere.
 All six official SDKs support listing, reading, updating,
 downloading and deleting assets. Their embedding results expose both asset IDs.
 Use an asset's current version when editing, and preserve your downloaded bytes.
+
+## Customer-owned storage
+
+Export verified watermarked outputs to your own S3, Google Cloud Storage or Azure
+Blob destination. Pass `storage_destination_id` and optional `storage_key` on an
+embedding request, or export an existing watermarked asset from the dashboard.
+The upload has its own durable delivery status and retries without another
+watermarking charge. [Read the storage guide](/docs/storage).

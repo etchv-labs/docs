@@ -88,3 +88,11 @@ Failed processing releases reserved credits. Webhook delivery attempts and redel
 All six SDKs offer explicit submission methods that return a receipt without polling: `submitEmbed` / `submitDetection` in Node.js and Java, `submit_embed` / `submit_detection` in Python and Rust, `SubmitEmbed` / `SubmitDetection` in Go, and `SubmitEmbedAsync` / `SubmitDetectionAsync` in C#.
 
 Their existing embedding and detection methods continue waiting for a result. In C#, the `Async` suffix on an existing method describes nonblocking client I/O; use **Submit** methods for a server-side background job.
+
+## Customer-owned storage
+
+Export verified watermarked outputs to your own S3, Google Cloud Storage or Azure
+Blob destination. Pass `storage_destination_id` and optional `storage_key` on an
+embedding request, or export an existing watermarked asset from the dashboard.
+The upload has its own durable delivery status and retries without another
+watermarking charge. [Read the storage guide](/docs/storage).

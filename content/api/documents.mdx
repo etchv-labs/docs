@@ -64,3 +64,11 @@ stay until deleted. Detection uploads do not create assets.
 ## Background processing
 
 Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
+
+## Customer-owned storage
+
+Export verified watermarked outputs to your own S3, Google Cloud Storage or Azure
+Blob destination. Pass `storage_destination_id` and optional `storage_key` on an
+embedding request, or export an existing watermarked asset from the dashboard.
+The upload has its own durable delivery status and retries without another
+watermarking charge. [Read the storage guide](/docs/storage).
