@@ -6,7 +6,9 @@ in Etchv, and original uploads keep their existing 30-day Etchv retention.
 
 Store verified images, PDFs and videos in an Azure Blob Storage container using
 a container-scoped SAS token. Both private and already-public containers work.
-Test the connection before using it for production.
+Test the connection before using it for production. Etchv verifies the watermark
+before delivery, preserves the result’s file format and MIME type, and retries
+storage failures without another watermark operation or credit charge.
 
 ## 1. Create a container SAS
 
