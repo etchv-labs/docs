@@ -82,26 +82,26 @@
         {
           "slug": "storage",
           "file": "storage/index.mdx",
-          "title": "Included storage & optional exports",
-          "description": "Etchv stores your files automatically. Optionally add a copy in your own cloud."
+          "title": "Choose your storage",
+          "description": "Use included Etchv storage, or choose your own bucket for watermarked results."
         },
         {
           "slug": "storage/s3",
           "file": "storage/s3.mdx",
           "title": "Amazon S3",
-          "description": "Optionally save an additional copy in your S3 bucket."
+          "description": "Choose to store watermarked results in your S3 bucket."
         },
         {
           "slug": "storage/gcs",
           "file": "storage/gcs.mdx",
           "title": "Google Cloud Storage",
-          "description": "Optionally save an additional copy in your Google Cloud Storage bucket."
+          "description": "Choose to store watermarked results in your Google Cloud Storage bucket."
         },
         {
           "slug": "storage/azure",
           "file": "storage/azure.mdx",
           "title": "Azure Blob Storage",
-          "description": "Optionally save an additional copy in your Azure Blob Storage container."
+          "description": "Choose to store watermarked results in your Azure Blob Storage container."
         }
       ]
     },

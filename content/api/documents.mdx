@@ -58,20 +58,20 @@ DOCX and PPTX remain under development. Use the separate [video endpoints](/docs
 
 Every new successful embedding saves the original and verified output in the
 [asset library](/docs/api/assets). The response includes `X-Asset-ID` and
-`X-Source-Asset-ID`. Files remain downloadable there for 30 days, and records
+`X-Source-Asset-ID`. Etchv-hosted files have 30-day downloads; customer-hosted results follow bucket retention. Records
 stay until deleted. Detection uploads do not create assets.
 
 ## Background processing
 
 Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
 
-## Optional cloud storage
+## Choose where results are stored
 
-Etchv automatically stores your original and watermarked files in its asset
-library, with 30-day downloads. No storage setup is required.
-
-If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
-destination, pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or copy an existing watermarked asset from the dashboard.
+Etchv storage is the default, with 30-day file downloads and no setup required.
+If you prefer to use your own S3, Google Cloud Storage or Azure Blob bucket for
+watermarked results, select it with `storage_destination_id` and optional
+`storage_key`. Your bucket becomes the result’s storage location. Etchv removes
+its temporary output after confirmed delivery; your bucket’s retention applies.
+Existing Etchv results can also be moved from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).

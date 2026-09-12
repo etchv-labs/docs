@@ -32,7 +32,7 @@ A successful request returns `200` with the MIME type of the original image form
 | Header | Description |
 | --- | --- |
 | `X-Watermark-ID` | The 256-bit identifier represented as 64 hexadecimal characters |
-| `X-Asset-ID` | Verified output asset ID for 30-day downloads |
+| `X-Asset-ID` | Verified output asset ID; downloads use the selected storage |
 | `X-Source-Asset-ID` | Original upload asset ID |
 | `X-Request-ID` | The operation's request identifier |
 | `Content-Disposition` | Suggested filename for the watermarked image |
@@ -77,7 +77,7 @@ successful result never consumes another credit.
 The job result endpoint is available for **24 hours of completion**. After that, job result retrieval
 returns `410`; the original key remains recorded and cannot create another charge.
 Use a new key for a genuinely new operation, including retrying a terminal failure.
-New successful jobs also save the original and verified output in the [asset library](/docs/api/assets), downloadable for **30 days**. Asset records stay until deleted.
+Successful jobs appear in the [asset library](/docs/api/assets). By default, Etchv stores originals and results for **30 days**. If you choose a customer bucket, it stores the result instead and controls retention. Asset records stay until deleted.
 Encrypted processing copies become eligible for deletion after seven days; library
 copies expire separately. Job and billing metadata remain for idempotency and accounting.
 The JSON payload itself is not retained; its digest is embedded.
@@ -111,13 +111,13 @@ See [image limits](/docs/api/errors) for frame, page and layered-file limits.
 
 Use the matching `/async` endpoint to receive a job receipt without waiting for processing. Optionally select an endpoint with `webhook_id` to receive a signed completion or failure event. See [sync and async](/docs/api/async) and [webhooks](/docs/api/webhooks).
 
-## Optional cloud storage
+## Choose where results are stored
 
-Etchv automatically stores your original and watermarked files in its asset
-library, with 30-day downloads. No storage setup is required.
-
-If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
-destination, pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or copy an existing watermarked asset from the dashboard.
+Etchv storage is the default, with 30-day file downloads and no setup required.
+If you prefer to use your own S3, Google Cloud Storage or Azure Blob bucket for
+watermarked results, select it with `storage_destination_id` and optional
+`storage_key`. Your bucket becomes the result’s storage location. Etchv removes
+its temporary output after confirmed delivery; your bucket’s retention applies.
+Existing Etchv results can also be moved from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).

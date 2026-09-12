@@ -59,7 +59,7 @@ curl 'https://api.etchv.com/watermarks/documents/async' \
 
 Poll `status_url` every two seconds until `status` is `succeeded` or `failed`. Intermediate states are `queued`, `running`, and `retrying`. Download `result_url` after success: embedding returns the original media format; detection returns JSON with per-frame or per-page results. A successful detection job can legitimately report `watermarked: false`.
 
-Job results remain available for 24 hours. Embedded source and output assets also appear in the [asset library](/docs/api/assets), with 30-day file downloads and records retained until deleted. Async detection does not create library assets. Download promptly; retrying a webhook does not extend file availability.
+Job results remain available for 24 hours. Embedded source and output assets also appear in the [asset library](/docs/api/assets), with records retained until deleted. Etchv storage has 30-day downloads by default; selected customer buckets control result retention. Async detection does not create library assets. Download promptly; retrying a webhook does not extend file availability.
 
 ## Get a webhook instead of polling
 
@@ -89,13 +89,13 @@ All six SDKs offer explicit submission methods that return a receipt without pol
 
 Their existing embedding and detection methods continue waiting for a result. In C#, the `Async` suffix on an existing method describes nonblocking client I/O; use **Submit** methods for a server-side background job.
 
-## Optional cloud storage
+## Choose where results are stored
 
-Etchv automatically stores your original and watermarked files in its asset
-library, with 30-day downloads. No storage setup is required.
-
-If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
-destination, pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or copy an existing watermarked asset from the dashboard.
+Etchv storage is the default, with 30-day file downloads and no setup required.
+If you prefer to use your own S3, Google Cloud Storage or Azure Blob bucket for
+watermarked results, select it with `storage_destination_id` and optional
+`storage_key`. Your bucket becomes the result’s storage location. Etchv removes
+its temporary output after confirmed delivery; your bucket’s retention applies.
+Existing Etchv results can also be moved from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).

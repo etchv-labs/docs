@@ -1,6 +1,8 @@
-Etchv automatically stores two assets for every successful embedding job: the
-original upload and the verified watermarked file. No customer storage setup is required. This works for all supported image, PDF and video
-formats. The output's `parent_asset_id` points to its original.
+Every successful embedding creates records for the original upload and verified
+watermarked result. Etchv stores the files itself by default; no customer storage
+setup is required. If you select a customer bucket, that bucket stores the
+watermarked result instead. Both records remain visible in the asset library.
+The output’s `parent_asset_id` points to its original.
 
 Use the [Assets dashboard](/dashboard/assets) or the API to browse, download,
 rename and organize them. Detection uploads do not create assets. Jobs completed
@@ -8,16 +10,29 @@ before the asset library launched are not backfilled.
 
 ## Files and records
 
-**Original and watermarked files are downloadable for 30 days from completion.**
-The record, including your name and metadata, stays until you delete it. After
-expiry, `file_available` is `false`, `download_url` is `null`, and downloading
-returns `410`. If you want to keep file copies beyond 30 days, you can download
-them or optionally [connect your own storage](/docs/storage).
+**Etchv-hosted files are downloadable for 30 days from completion.** The record,
+including your name and metadata, stays until you delete it. After Etchv file
+expiry, `file_available` is `false` and `download_url` is `null`.
+
+If you [choose your own storage](/docs/storage), the result record exposes
+`storage_provider`, `storage_destination_id`, `storage_delivery_id` and
+`storage_status`. After delivery is `stored`, `file_expires_at` is `null` because
+your bucket controls retention. The same asset download endpoint reads from your
+bucket. Etchv removes its staged output after delivery; `staging_deleted_at`
+confirms cleanup. Until delivery, `staging_expires_at` identifies the recovery
+window. A failed upload stays visible and retryable, rather than silently
+changing the selected destination back to Etchv.
+
+Original uploads remain in Etchv storage for 30 days. Connecting a destination
+does not move existing outputs automatically; select **Move to my storage** for
+an available Etchv-hosted result. Each result has one selected storage destination.
+`file_available` reflects recorded storage state; provider access is checked on
+download, and may fail if you remove the object or revoke the connection.
 
 The job result endpoint remains available for 24 hours. Its response includes
 `X-Asset-ID` and `X-Source-Asset-ID`; successful job status responses also include
-`asset_id` and `source_asset_id`. Use those IDs with the asset API for the full
-30-day download window. Replaying a job creates no extra assets or charges.
+`asset_id` and `source_asset_id`. Use those IDs with the asset API for the selected storage location’s
+download window. Replaying a job creates no extra assets or charges.
 
 Creating the two asset records, completing the job and settling its credits
 commit together. Storage or worker failures are retried through the durable job.
@@ -162,13 +177,13 @@ All six official SDKs support listing, reading, updating,
 downloading and deleting assets. Their embedding results expose both asset IDs.
 Use an asset's current version when editing, and preserve your downloaded bytes.
 
-## Optional cloud storage
+## Choose where results are stored
 
-Etchv automatically stores your original and watermarked files in its asset
-library, with 30-day downloads. No storage setup is required.
-
-If you want an additional copy in your own S3, Google Cloud Storage or Azure Blob
-destination, pass `storage_destination_id` and optional `storage_key` on an
-embedding request, or copy an existing watermarked asset from the dashboard.
+Etchv storage is the default, with 30-day file downloads and no setup required.
+If you prefer to use your own S3, Google Cloud Storage or Azure Blob bucket for
+watermarked results, select it with `storage_destination_id` and optional
+`storage_key`. Your bucket becomes the result’s storage location. Etchv removes
+its temporary output after confirmed delivery; your bucket’s retention applies.
+Existing Etchv results can also be moved from the dashboard.
 The upload has its own durable delivery status and retries without another
 watermarking charge. [Read the storage guide](/docs/storage).

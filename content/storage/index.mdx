@@ -1,36 +1,47 @@
-Etchv stores every successful watermarked result and its original upload in your
-Etchv asset library automatically. Files are available to download for 30 days;
-asset records remain until you delete them. **You do not need your own bucket,
-cloud account, or storage configuration to use Etchv.**
+Etchv storage is included by default. Watermark a file without any storage
+configuration and Etchv stores the original and watermarked result for 30-day
+downloads. Asset records remain until you delete them.
 
-If you prefer to keep an additional copy in your own infrastructure, you can
-optionally connect Amazon S3, Google Cloud Storage, or Azure Blob Storage.
-Your Etchv copy is still saved as usual.
+If you prefer your own storage, connect an Amazon S3 bucket, Google Cloud Storage
+bucket, or Azure Blob Storage container and select it for your request. **Your
+bucket becomes the storage location for the watermarked result.**
 
-## Add an optional cloud copy
+## Choose a storage location
 
-If you choose this option, connect and test a destination in
-[Dashboard → Storage](/dashboard/storage), then select it when watermarking.
-You can also copy an existing watermarked asset. Exports and upload retries
-consume no additional watermarking credits.
+| Choice | Where the watermarked result lives | File retention |
+| --- | --- | --- |
+| Etchv storage (default) | Etchv’s managed asset storage | 30 days |
+| Your connected bucket | Your S3, Google Cloud Storage or Azure Blob destination | Your bucket’s lifecycle policy |
 
-## How an optional export works
+Both choices appear in the Etchv asset library. Asset records, watermark IDs and
+metadata remain in Etchv; downloads use the selected storage location. Original
+uploads retain their existing 30-day Etchv policy regardless of output storage.
 
-1. Etchv watermarks the file and verifies its native output.
-2. The verified result and a storage delivery are committed together.
-3. A separate worker uploads those exact bytes to your destination. Upload failures
-   retry automatically without running the watermark model again.
-4. Poll the delivery or receive a storage webhook to know when the object is stored.
+Connecting a bucket does not change existing assets or set an account default.
+Select it when watermarking, or use **Move to my storage** for an available
+Etchv-hosted result. Each result has one selected destination. Moving between
+customer buckets or back to Etchv is not supported in this release.
 
-Watermark completion and storage completion are separate. A `200` binary response
-or `watermark.embed.succeeded` event confirms watermarking; it does **not** confirm
-that your cloud upload has finished. Wait for delivery status `stored` or the
-`storage.delivery.succeeded` event before using the cloud object.
+## Durable delivery to your bucket
 
-Etchv stores the original and verified result for 30 days whether or not you
-connect your own storage. Objects in your storage follow **your**
-lifecycle and access policies. Etchv never changes bucket permissions, sets public
-object ACLs, overwrites a different object, or automatically deletes your objects.
+1. Etchv watermarks the file and verifies the native output.
+2. It temporarily stages those bytes and commits the asset record and delivery
+   together. The asset records your selected provider immediately.
+3. A delivery worker writes the verified bytes to your bucket. Upload retries
+   reuse those bytes without another watermarking charge.
+4. After upload is confirmed, the asset download switches to your bucket and a
+   durable cleanup removes Etchv’s staged output and job-result object.
+
+A `200` binary response or `watermark.embed.succeeded` event confirms watermarking.
+Wait for delivery status `stored` or `storage.delivery.succeeded` to know that
+your bucket holds the result. Until then, downloads may read temporary staging.
+An upload failure remains visible against the chosen destination; Etchv does not
+silently change your storage choice. Failed staging is available for recovery
+for up to 30 days. `staging_deleted_at` on the asset confirms successful cleanup.
+
+For results delivered to your bucket, `file_expires_at` is `null`: your retention
+policy controls the file. Etchv never changes bucket access policies, overwrites
+different customer bytes, or automatically deletes customer objects.
 
 ## Connect your provider
 
@@ -46,8 +57,8 @@ No delete or bucket-list permission is needed for normal exports.
 
 ## Select storage on a request
 
-Leave these parameters out to use Etchv’s included storage alone. If you choose
-an additional cloud copy, the same query parameters work on `/watermarks/images`, `/watermarks/documents`,
+Leave these parameters out to use Etchv’s included storage. To use your own
+bucket instead for the result, the same query parameters work on `/watermarks/images`, `/watermarks/documents`,
 `/watermarks/videos` and their `/async` equivalents. Detection has no output file
 to export and rejects storage options.
 
@@ -105,10 +116,12 @@ curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID/content" \
 ```
 
 Cloud credentials and write-capable SAS tokens are never returned in download
-links. The proxy remains available after Etchv’s 30-day copy expires, provided the
+links. The proxy remains available after temporary Etchv output cleanup, provided the
 asset record still exists, the connection is enabled and verified, and the
-customer object/credentials remain available. The customer can change or remove
-that object; Etchv’s recorded checksum describes the bytes originally exported.
+customer object/credentials remain available. You can change or remove the object in your bucket. Etchv checks the stored
+bytes against the verified checksum when proxying a download; a changed object
+cannot complete a verified download. Direct public URLs follow your bucket’s
+access policy and do not pass through this check.
 
 ## API management
 
@@ -124,7 +137,7 @@ an already verified destination in their own organization.
 | DELETE | `/storage/destinations/{id}` | Disconnect and discard stored credentials. |
 | POST | `/storage/destinations/{id}/verify` | Write and read a connection probe. |
 | GET | `/storage/destinations/{id}/deliveries` | List 50 deliveries; pass returned `next_cursor` as `after`. |
-| POST | `/storage/destinations/{id}/deliveries` | Export an existing watermarked asset with `{"asset_id":"ast_…","key":"optional/file.png"}`. |
+| POST | `/storage/destinations/{id}/deliveries` | Move an Etchv-hosted watermarked result with `{"asset_id":"ast_…","key":"optional/file.png"}`. |
 | GET | `/storage/deliveries/{id}` | Read delivery status. |
 | POST | `/storage/deliveries/{id}/retry` | Retry a failed/cancelled upload without another charge. |
 | GET | `/storage/deliveries/{id}/content` | Authenticated download of a stored object. |
@@ -134,8 +147,9 @@ provider, bucket, prefix and visibility are immutable: create a new connection t
 change them. Credential rotation clears verification until you test the
 connection again. S3 uses role trust, so update the customer role directly.
 
-Each asset/destination pair has one immutable delivery key. Submitting the same
-pair and key returns the existing delivery. Another key for that pair returns
+Each result has one selected customer destination and an immutable delivery key. Submitting the same
+pair and key returns the existing delivery. Another destination for that result
+returns `409`. Another key for that pair returns
 `409`. Existing customer objects are created conditionally; after an uncertain
 upload, a retry accepts an existing object only when its actual bytes match.
 
@@ -143,13 +157,13 @@ upload, a retry accepts an existing object only when its actual bytes match.
 
 Ten automatic attempts span approximately 22 hours, with delays of 30 seconds,
 2 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 6 hours and 8 hours.
-You can retry a terminal failure up to 10 more times while Etchv still has the
-30-day source copy. Each manual retry starts a new automatic retry cycle.
+You can retry a terminal failure up to 10 more times while the temporary
+verified output remains available (up to 30 days). Each manual retry starts a new automatic retry cycle.
 
 `provider_unavailable` means credentials, permissions or the cloud service need
 attention. `object_key_conflict` means a different object already occupies that
 key; Etchv will not overwrite it. `source_or_destination_unavailable` means the
-source expired/was deleted, the organization was disabled, or the connection is
+temporary source expired/was deleted, the organization was disabled, or the connection is
 missing, disabled or unverified. `export_too_large` indicates the output limit.
 `verified_source_mismatch` means the retained source failed its checksum check;
 Etchv cancels the export instead of sending unverified bytes.

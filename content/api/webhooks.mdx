@@ -111,10 +111,10 @@ Delivery listing returns `data` and `next_cursor`; pass the cursor as `after` fo
 
 Disabling or deleting an endpoint cancels its deliveries when the dispatcher next picks them up. An already in-flight delivery may still arrive. Re-enabling does not automatically requeue cancelled events; redeliver them explicitly. Deleting an endpoint is permanent; use disable if you may need it again.
 
-## Optional cloud export events
+## Customer storage delivery events
 
-Etchv stores watermarked results by default. The events below apply only when you
-choose an additional copy in your own cloud storage.
+Etchv storage is the default. These events apply only when you choose your own
+bucket as the storage destination for a watermarked result.
 
 When an async embedding request selects both `webhook_id` and
 `storage_destination_id`, the endpoint also receives `storage.delivery.succeeded`

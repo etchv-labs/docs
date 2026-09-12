@@ -10,7 +10,7 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
 | `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
 | `404` | Asset not found or outside your organization | Check the asset ID and organization |
-| `410` | Job result or asset file expired/deleted | Use your own saved copy; an expired asset record remains readable |
+| `410` | Job result or asset file expired/deleted | The file is no longer available; its retained asset record remains readable |
 | `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |

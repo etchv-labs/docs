@@ -1,8 +1,10 @@
-Etchv stores your original uploads and watermarked results automatically, with
-30-day downloads. This integration is **optional**: use it only if you want an
-additional copy in your own cloud. Your Etchv copy is still saved as usual.
+Etchv storage is included by default, with 30-day downloads and no setup required.
+If you prefer to store watermarked results in your own bucket instead, choose
+this optional integration. Your bucket becomes the result’s storage location;
+Etchv removes its temporary output after confirmed delivery. Asset records stay
+in Etchv, and original uploads keep their existing 30-day Etchv retention.
 
-Export verified images, PDFs and videos to an Azure Blob Storage container using
+Store verified images, PDFs and videos in an Azure Blob Storage container using
 a container-scoped SAS token. Both private and already-public containers work.
 Test the connection before using it for production.
 
@@ -59,4 +61,4 @@ Etchv never changes anonymous-access settings.
 A private download is proxied with server-side credentials; Etchv does not expose
 the write-capable container SAS to the browser. When a token expires, pending
 uploads retry. Replace `credentials`, verify the connection, then retry exhausted
-deliveries while Etchv’s 30-day copy is still available.
+deliveries while the temporary verified output is still available (up to 30 days).
