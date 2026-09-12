@@ -16,12 +16,19 @@ editing content or removing them can change recovery.
 - Text, vector graphics and scanned images within the same PDF.
 - Up to 20 MB input and output; dashboard uploads remain limited to 4 MB.
 - Pages rendered at 144 dpi: up to 4 million pixels per page and 16 million total.
-- Only link annotations. Forms, signatures, other annotations, attachments and
-  active content are rejected. Signed files are never silently modified.
+- JSON metadata attachments are preserved byte-for-byte, but are not watermarked.
+  They must have a `.json` filename, an `application/json` media type and contain
+  a valid UTF-8 JSON object or array with at most 64 nesting levels. Limits:
+  64 KB each, 256 KB total, 16 files.
+- Only link annotations. Forms, digital signatures, other annotations, non-JSON
+  attachments and active content are rejected. Digitally signed files are never
+  silently modified. Scanned handwritten signatures are ordinary page content.
 
 Every final serialized page must recover the exact identifier and meet a 35 dB
 minimum rendered PSNR before the job succeeds. Verification uses a canonical
-144 dpi RGB rendering. Different rendering engines, printing, re-saving and edits
+144 dpi RGB rendering. Embedding first attempts the stricter image setting,
+then allows additional strength on difficult pages within the PDF quality limit.
+Different rendering engines, printing, re-saving and edits
 can affect recovery; arbitrary transformations are not guaranteed.
 
 ## Billing and results
