@@ -28,6 +28,8 @@ Every final serialized page must recover the exact identifier and meet a 35 dB
 minimum rendered PSNR before the job succeeds. Verification uses a canonical
 144 dpi RGB rendering. Embedding first attempts the stricter image setting,
 then allows additional strength on difficult pages within the PDF quality limit.
+The worker also checks a second rendering engine and, when needed, fits the
+watermark to both renderings before publishing the result.
 Different rendering engines, printing, re-saving and edits
 can affect recovery; arbitrary transformations are not guaranteed.
 
