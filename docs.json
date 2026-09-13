@@ -22,6 +22,12 @@
           "description": "Create scoped API keys and keep them on your server."
         },
         {
+          "slug": "billing",
+          "file": "billing.mdx",
+          "title": "Plans and credits",
+          "description": "Choose a plan, understand monthly credits and manage subscription renewals."
+        },
+        {
           "slug": "mcp",
           "file": "mcp.mdx",
           "title": "MCP server",

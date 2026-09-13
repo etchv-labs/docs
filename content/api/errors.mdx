@@ -55,3 +55,5 @@ and HTTP status. Do not send your API key.
 Storage upload errors are recorded separately from watermarking errors. A failed
 cloud upload does not invalidate an already verified Etchv asset or consume a
 second credit. See [storage retry and error codes](/docs/storage).
+
+Format access also returns `403` when a file requires a higher plan. Starter covers single-frame JPEG and PNG; Launch adds other supported images; Growth and Scale add PDF and video. No credits are reserved for a rejected format. See [plans and credits](/docs/billing).
