@@ -50,6 +50,10 @@ Embedding first attempts the stricter image setting,
 then allows additional strength on difficult pages within the PDF quality limit.
 The worker also checks a second rendering engine and, when needed, fits the
 watermark to both renderings before publishing the result.
+If PDF compositing exceeds the quality limit, serialization can make up to two
+small reductions in watermark strength, always starting from the original page.
+The final bytes still must pass quality checks and recover the exact identifier
+in both rendering engines; a weaker, unreadable result is never delivered.
 Different rendering engines, printing, re-saving and edits
 can affect recovery; arbitrary transformations are not guaranteed.
 
