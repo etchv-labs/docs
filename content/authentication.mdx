@@ -31,7 +31,7 @@ save a CSV with its name, secret, permissions and dates. The full key is only
 available on this confirmation screen; dismissing it removes the download option.
 
 The watermarking and detection screens select an active key from your current
-organization automatically. Open the **API key** dropdown in the toolbar to
+organization automatically. Open the **API key** dropdown at the top of the form to
 search by name or prefix and choose another key. The selected name and active
 status remain visible, and your choice is remembered for that organization in
 this browser session. Resetting an operation keeps the selection.
@@ -45,6 +45,11 @@ If you have no active key, create one from **Manage keys**.
 
 These controls work for images, PDFs and videos in both sync and async mode.
 Server integrations and SDKs continue to use the `X-API-Key` header shown above.
+
+The **API request** panel keeps a JSON view of your request alongside a **Code**
+view with cURL, TypeScript, Python, Go, Rust, C# and Java examples. Choose a language
+and copy the example; it follows your file type, reference data, storage destination
+and sync or async mode. Set your credentials on your server before running it.
 
 ## Keep credentials on your server
 
