@@ -50,6 +50,9 @@ Embedding first attempts the stricter image setting,
 then allows additional strength on difficult pages within the PDF quality limit.
 The worker also checks a second rendering engine and, when needed, fits the
 watermark to both renderings before publishing the result.
+The API includes standard substitute fonts for PDFs without embedded fonts.
+A viewer using different substitutes can render text
+differently; embedding fonts in source PDFs improves consistency across viewers.
 If PDF compositing exceeds the quality limit, serialization can make up to two
 small reductions in watermark strength, always starting from the original page.
 The final bytes still must pass quality checks and recover the exact identifier
