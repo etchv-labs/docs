@@ -24,6 +24,28 @@ Keys belong to an organization and are subject to membership, expiration,
 revocation, and billing checks. An authenticated key alone does not guarantee
 that credits are available.
 
+## Use keys in the dashboard
+
+When you create a key, copy it or use the download icon beside the key field to
+save a CSV with its name, secret, permissions and dates. The full key is only
+available on this confirmation screen; dismissing it removes the download option.
+
+The watermarking and detection screens select an active key from your current
+organization automatically. Open the **API key** dropdown in the toolbar to
+search by name or prefix and choose another key. The selected name and active
+status remain visible, and your choice is remembered for that organization in
+this browser session. Resetting an operation keeps the selection.
+
+You do not need to copy a secret into the dashboard. Your signed-in session
+authorizes the selected key, and the API still checks its scopes, expiry,
+revocation and organization membership for every request. Members can select
+their own keys; owners and admins can select active keys in their organization.
+Keys without the permission needed for the current operation are disabled.
+If you have no active key, create one from **Manage keys**.
+
+These controls work for images, PDFs and videos in both sync and async mode.
+Server integrations and SDKs continue to use the `X-API-Key` header shown above.
+
 ## Keep credentials on your server
 
 Do not embed keys in frontend JavaScript, mobile application bundles, public
