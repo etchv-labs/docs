@@ -20,6 +20,12 @@
           "file": "authentication.mdx",
           "title": "Authentication",
           "description": "Create scoped API keys and keep them on your server."
+        },
+        {
+          "slug": "mcp",
+          "file": "mcp.mdx",
+          "title": "MCP server",
+          "description": "Connect AI assistants to image, PDF and video watermarking with sync and async tools."
         }
       ]
     },
