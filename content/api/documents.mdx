@@ -6,7 +6,7 @@ page. `POST /watermarks/documents/detect` detects it page by page. Authenticatio
 The output is a native PDF. Existing text, fonts and vector drawing commands
 remain in the document. Two pixel-based blend textures adjust the page appearance
 to carry the watermark; pages are **not replaced with flattened images**. Text
-remains searchable and selectable. Page sizes, link annotations and document
+remains searchable and selectable. Page sizes, supported annotations and document
 metadata are retained. The watermark textures are tied to the original layout;
 editing content or removing them can change recovery.
 
@@ -34,13 +34,19 @@ async job. [Set up webhooks](/docs/api/webhooks).
   They must have a `.json` filename, an `application/json` media type and contain
   a valid UTF-8 JSON object or array with at most 64 nesting levels. Limits:
   64 KB each, 256 KB total, 16 files.
-- Only link annotations. Forms, digital signatures, other annotations, non-JSON
-  attachments and active content are rejected. Digitally signed files are never
+- Links, text notes, popups and static `PlyBorder` border annotations are retained,
+  including their content, relationships and appearance streams. They are not
+  flattened into the page. Borders require a normal Form appearance stream;
+  actions on notes, popups and borders are not supported.
+- Forms, digital signatures, other annotation types, non-JSON attachments and
+  active content are rejected. Digitally signed files are never
   silently modified. Scanned handwritten signatures are ordinary page content.
 
 Every final serialized page must recover the exact identifier and meet a 35 dB
 minimum rendered PSNR before the job succeeds. Verification uses a canonical
-144 dpi RGB rendering. Embedding first attempts the stricter image setting,
+144 dpi RGB rendering of page content, with annotations hidden. Annotations are
+preserved separately; their content does not receive its own watermark.
+Embedding first attempts the stricter image setting,
 then allows additional strength on difficult pages within the PDF quality limit.
 The worker also checks a second rendering engine and, when needed, fits the
 watermark to both renderings before publishing the result.
