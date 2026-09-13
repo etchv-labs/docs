@@ -6,6 +6,24 @@ The server runs locally over stdio and connects to the same hosted API used by
 the dashboard and SDKs. It supports both **sync and async** requests for every
 media type. Async is the default for assistant tools.
 
+<Cards>
+  <Card href="#install-and-connect" title="Connect your assistant">
+    Install the server and add it to your MCP client.
+  </Card>
+  <Card href="https://github.com/etchv-labs/mcp-server" title="View on GitHub">
+    Open-source TypeScript, native tests and contribution guidance.
+  </Card>
+</Cards>
+
+## What you can ask
+
+- **Protect a delivery.** “Watermark this PDF for delivery-42, keeping its text selectable.”
+- **Inspect a copy.** “Check this video for an Etchv watermark and recover its identifier.”
+- **Find your files.** “List my latest watermarked assets and download the one I choose.”
+
+Use a compatible MCP client that can launch a local server. The same tools support
+images, documents and video, with your existing API key and organization permissions.
+
 ## Install and connect
 
 You need Node.js 24 or later, a scoped [Etchv API key](/docs/authentication), and a
