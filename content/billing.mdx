@@ -1,0 +1,71 @@
+## Start with a free trial
+
+[Sign up](/signup) for 100 credits over seven days
+in your personal workspace, with all supported formats and no credit card required.
+Use the dashboard immediately with your signed-in session; create an API key only
+for external integrations. The trial starts at signup and never renews. Creating
+additional workspaces does not grant more trial credits.
+
+When credits run out or seven days pass, new processing pauses. No automatic charge
+or subscription is created. Your account and asset records remain; normal file
+retention still applies. Upgrade in [Dashboard → Billing](/dashboard/billing) any time.
+After payment is confirmed, paid credits are granted in the same workspace. Unused
+trial credits remain available until their original expiry and are spent first.
+Paid-plan format limits apply after upgrading.
+
+## Plans and formats
+
+Choose a plan in [Dashboard → Billing](/dashboard/billing). Subscriptions belong
+to an organization: members share its credits, and only the owner can change
+the plan, payment details, or renewal settings.
+
+| Plan | Monthly billing | Annual billing | Credits each month | Formats |
+| --- | --- | --- | --- | --- |
+| Launch | $19 | $182.40 | 250 | All supported images, including animation, TIFF pages and Photoshop layers |
+| Growth | $49 | $470.40 | 1,000 | All supported images, PDF and H.264 MP4/MOV video |
+| Scale | $99 | $950.40 | 2,500 | All supported images, PDF and H.264 MP4/MOV video |
+| Business | $499 | $4,790.40 | 15,000 | All supported images, PDF and H.264 MP4/MOV video |
+| Enterprise | Custom | Custom | Agreed allowance | All supported formats |
+
+Prices are USD, before applicable taxes. Annual billing is paid upfront and saves
+20%. Credits are allocated monthly, including on annual plans. Unused credits
+expire when that monthly allocation ends; annual payment does not make the entire
+year's credits available immediately. Your dashboard shows the next credit reset
+and subscription renewal separately.
+
+Format access applies to embedding and detection, through both the dashboard and
+the synchronous and asynchronous APIs. [Image](/docs/api/embed),
+[PDF](/docs/api/documents) and [video](/docs/api/videos) limits still apply.
+A format outside your plan returns `403` before credits are reserved.
+
+## What uses credits
+
+- A successful image or PDF operation uses one credit per file, including supported
+  animation frames, pages and layers.
+- A video operation uses one credit per started minute. A 61-second video costs two
+  credits.
+- Embedding and detection are separate operations. Detection costs credits even
+  when no watermark is found.
+- Failed operations release reserved credits. Automatic job retries do not create
+  additional charges. Use the same idempotency key when recovering a request.
+- Viewing assets and downloading saved results do not use credits.
+
+When available credits run out, new processing requests return `402`. There are
+no automatic overage charges. Requests already accepted keep their reservations
+until they finish. See [request recovery](/docs/api/errors).
+
+## Change or cancel a subscription
+
+The workspace owner can select a new plan or billing frequency in Dashboard →
+Billing. The change starts at the next subscription renewal. Current access and
+credits continue until then, with no prorated adjustment. On an annual plan, that
+means the end of the paid year. Choose the current plan and frequency to remove a
+scheduled change.
+
+Use **Manage billing** to update payment details, view invoices or cancel renewal.
+Cancellation leaves access available through the paid period. If renewal is
+canceled, resume it before scheduling a plan change. An overdue payment can pause
+new processing requests; update payment details in Manage billing.
+
+[Contact us](/contact) for Enterprise allowances and billing terms, evaluations or
+additional capacity.

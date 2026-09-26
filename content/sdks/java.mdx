@@ -1,0 +1,157 @@
+Use the [Etchv Java SDK](https://github.com/etchv-labs/java-sdk) with Java 21+. The only runtime dependency is Gson. MIT licensed.
+
+## Install
+
+Maven:
+
+```xml
+<dependency>
+  <groupId>com.etchv</groupId>
+  <artifactId>etchv-sdk</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
+
+Gradle (Kotlin DSL):
+
+```kotlin
+implementation("com.etchv:etchv-sdk:1.0.0")
+```
+
+## Embed a file
+
+Set `ETCHV_API_KEY` to a server-side [API key](/docs/authentication) with the
+`watermarks:embed` scope and available credits. The following snippets use this
+configured client.
+
+```java
+import com.etchv.EtchvClient;
+import java.nio.file.*;
+import java.util.Map;
+
+class Example {
+    public static void main(String[] args) throws Exception {
+        try (var client = new EtchvClient(System.getenv("ETCHV_API_KEY"))) {
+            System.out.println(client.getApiKeyInfo().scopes()); // no credits used
+            var result = client.embedImage(Files.readAllBytes(Path.of("photo.jpg")),
+                Map.of("asset", "photo-123"), new EtchvClient.Options("photo.jpg", null));
+            Files.write(Path.of(result.filename()), result.bytes());
+            var detection = client.detectImage(result.bytes(), null);
+            System.out.println(detection.watermarked() + " " + detection.confidence());
+        }
+    }
+}
+```
+
+`getApiKeyInfo` confirms the key and returns its `organizationId`, `keyId` and `scopes`
+without using credits. `EtchvClient` is thread-safe; create one per application.
+
+## Images, documents and video
+
+`embedImage` / `detectImage`, `embedDocument` / `detectDocument`, `embedVideo` / `detectVideo`. Write returned bytes directly using the result’s filename. Detection returns `watermarked`, `confidence`, a nullable `watermarkId`, `requestId`, and per-frame or per-page units.
+
+See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos).
+
+## Retries and recovery
+
+Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `getEmbedResult(requestId)` / `getDetectionResult(requestId)`.
+
+`EtchvClient(key, baseUrl, Duration)` sets the deadline. Calls are synchronous and propagate `InterruptedException` on thread interruption. Close the client when finished.
+
+API and transport failures throw the unchecked `EtchvClient.EtchvException` with `statusCode()`
+(`0` when no response was received), `requestId()` (quote it to support), `idempotencyKey()`,
+and `detail()`; `isGone()` identifies an expired or deleted result (410):
+
+```java
+try {
+    var result = client.getEmbedResult(requestId);
+} catch (EtchvClient.EtchvException e) {
+    if (e.isGone()) {
+        // Saved result expired or its asset was deleted; retrying does not charge again.
+    }
+    log.warn("Etchv failed: status={} requestId={}", e.statusCode(), e.requestId());
+}
+```
+
+Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.
+
+## Asset library
+
+Embedding returns IDs for the original and watermarked assets. Use `assets:read`
+to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
+membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+
+```java
+var page = client.listAssets(Map.of("kind", "watermarked", "limit", "25"));
+for (var item : page.items()) {
+    var asset = client.getAsset(item.id());
+    var updated = client.updateAsset(asset.id(), asset.version(),
+        Map.of("metadata", Map.of("campaign", "spring")));
+    if (updated.fileAvailable()) {
+        byte[] bytes = client.downloadAsset(updated.id());
+    }
+}
+// Use nextCursor() with the same filters to continue listing.
+```
+
+Edits replace metadata and require the current version. Reload and reconcile on
+`409`. Asset operations use no credits and never change the embedded watermark.
+`deleteAsset` removes one asset and `deleteAssets` removes up to 50 atomically.
+See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+
+## Async jobs and webhooks
+
+Regular embed/detect methods wait for a result. Submission methods return a JSON job
+receipt without polling. Choose `images`, `documents`, or `videos`; the example
+below assumes you have loaded a PDF into memory.
+
+```java
+var job = client.submitEmbed("documents", pdfBytes, Map.of("delivery", "delivery_001"),
+    new EtchvClient.Options("document.pdf", "delivery_001"), webhookId);
+String requestId = job.get("request_id").getAsString();
+var status = client.getJob(requestId, false);   // queued, running, retrying, succeeded, failed
+var result = client.getEmbedResult(requestId);  // waits while the job is pending
+```
+
+Use `submitDetection` for detection without forensic data, `getJob(requestId, true)` for
+its status, and `getDetectionResult` for its result.
+
+Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
+submitting, or pass `null` to poll. Persist your idempotency key before uploading. After success, collect
+the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+
+With `webhooks:read` and `webhooks:write` (owner or admin), manage endpoints from the SDK:
+`createWebhook(url)` returns `signingSecret()` once, alongside `listWebhooks`, `updateWebhook`,
+`deleteWebhook`, `listWebhookDeliveries`, and `redeliverWebhook`. Verify each delivery
+against the raw request body before parsing it:
+
+```java
+boolean valid = EtchvClient.verifyWebhookSignature(rawBody,
+    request.getHeader("X-Etchv-Timestamp"), request.getHeader("X-Etchv-Signature"), signingSecret);
+// Then check the body id equals X-Etchv-Event-ID, deduplicate, enqueue work, and return 2xx.
+```
+
+`verifyWebhookSignature` checks the HMAC-SHA256 signature in constant time and rejects
+timestamps more than five minutes from your clock.
+
+## Choose where results are stored
+
+Etchv storage is included by default. To use your own bucket, [connect and verify
+a destination](/docs/storage), then pass its ID and an optional object key:
+
+```java
+var job = client.submitEmbed("documents", pdfBytes,
+    Map.of("recipient", "customer-123"),
+    new EtchvClient.Options("report.pdf", "report-export-001", destinationId,
+        "reports/watermarked.pdf"), null);
+// After the watermark job reports succeeded:
+var delivery = client.getStorageDelivery(job.get("storage_delivery_id").getAsString());
+```
+
+Wait for the watermark job to succeed before reading its delivery record;
+it returns `404` until then. With `storage:read`, poll delivery status until
+`stored` or a terminal failure; `retryStorageDelivery` retries a failed upload without
+additional credits. With `storage:write`, manage destinations with `createStorageDestination`,
+`verifyStorageDestination`, `updateStorageDestination`, and `deleteStorageDestination`;
+`createStorageDelivery` copies an existing asset and `downloadStorageDelivery` fetches a stored object.
+See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).

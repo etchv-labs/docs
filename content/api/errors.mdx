@@ -1,0 +1,63 @@
+Non-success responses normally contain JSON with a `detail` field. Save the
+HTTP status and any `X-Request-ID` header when investigating a failed request.
+
+## Status codes
+
+| Status | Meaning | Next step |
+| --- | --- | --- |
+| `401` | Missing or invalid authentication | Check your API key |
+| `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
+| `403` | Insufficient scope, membership, or plan access | Check [key permissions](/docs/authentication) and [plan formats](/docs/billing) |
+| `404` | Asset not found or outside your organization | Check the asset ID and organization |
+| `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
+| `410` | Job result or asset file expired/deleted | Check the asset library; records for expired files remain readable until deleted |
+| `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
+| `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
+| `503` | A required service is unavailable | Check service status and handle the failure in your application |
+
+## Image limits
+
+| Limit | Maximum |
+| --- | --- |
+| API upload and delivered file | 20 MB |
+| Dashboard upload | 4 MB |
+| Frames or pages per image | 32, including an APNG default/poster image |
+| Total pixels across frames or pages | 40 megapixels |
+| GIF frame | 1 megapixel |
+| PSD/PSB canvas | 4 megapixels |
+| PSD/PSB layers | 64 layers and 16 megapixels total, including the two added watermark layers |
+
+Send encoded image bytes, not a URL or base64 string. The `data` field must be a
+non-empty JSON object. Embedding preserves the original format; high-bit-depth
+and CMYK variants are unsupported. Files that browsers cannot preview can still
+be uploaded through the dashboard.
+
+See [PDF limits](/docs/api/documents#supported-files) and
+[video limits](/docs/api/videos#supported-files) for other media.
+
+## Credits and retries
+
+Image and PDF operations each use one credit per file; video uses one credit per
+started minute. Embedding reserves credits when its durable job is accepted,
+charges once the verified result is saved, and releases the reservation on failure. Retries and result downloads do
+not consume additional credits. During an outage, reservations remain until a worker
+can complete or finalize the job.
+
+Embedding SDK calls automatically retry transient failures and poll `202` jobs.
+A client timeout does not cancel the job. Resume with the request ID or resubmit the
+same image/data and idempotency key. Terminal JSON has `status: "failed"`; retrying
+that key returns the same failure. See [embedding](/docs/api/embed) for retention.
+
+The standard image and PDF detection endpoints are synchronous (their `/async` alternatives use durable jobs): SDKs do not retry those detections
+automatically. Video detection uses durable jobs and automatic polling. Asset management and
+downloads consume no credits.
+
+## Service status
+
+Check [status.etchv.com](https://status.etchv.com) for service availability.
+For help, contact [hello@etchv.com](mailto:hello@etchv.com) with the request ID
+and HTTP status. Do not send your API key.
+
+Storage upload errors are recorded separately from watermarking errors. A failed
+cloud upload does not invalidate an already verified Etchv asset or consume a
+second credit. See [storage retry and error codes](/docs/storage).

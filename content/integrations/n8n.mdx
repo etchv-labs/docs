@@ -1,0 +1,14 @@
+The Etchv community node for self-hosted n8n is in early access. Contact hello@etchv.com to join, and we'll send the package and installation steps for your n8n instance. Hosted n8n accounts need their administrator to enable community nodes.
+
+## Add your credentials
+
+Create an Etchv key in [Dashboard API keys](/dashboard/api-keys) with `watermarks:embed`, `watermarks:detect`, and optionally `assets:read`. Add **Etchv API** credentials in n8n and paste the key. The credential check uses `GET /auth/api-key`; it consumes no watermarking credit.
+
+## Build a workflow
+
+1. Start with a node that provides binary file data. In **Etchv**, choose **Submit Watermark** or **Submit Detection**, choose **Image**, **PDF**, or **Video**, and enter the binary field name (usually `data`).
+2. For watermarking, enter a nonempty JSON reference object. Map an idempotency key from the source event; include the operation if the same event can be both marked and detected.
+3. Save the returned `status_url` and `result_url`. Use a Wait node, then **Etchv → Get Job Status**. Repeat while the status is `queued`, `running`, or `retrying`, up to 35 minutes.
+4. On `succeeded`, use **Get Job Result**. Choose **Watermark** for a binary output in the `data` field, or **Detection** for JSON. On `failed`, route `error_code` and `request_id` to your error handling step.
+
+**Download Asset** returns a binary file from `asset_id` when the key has `assets:read`. The job result path lasts 24 hours; asset availability follows the [asset library's retention](/docs/api/assets). Do not resubmit with a new idempotency key to check a job.

@@ -1,0 +1,87 @@
+`POST /watermarks/documents` embeds a forensic identifier into every rendered PDF
+page. `POST /watermarks/documents/detect` detects it page by page. Authentication,
+`data`, idempotency keys, durable jobs and saved-result retrieval follow the
+[image API](/docs/api/embed).
+
+The output is a native PDF. Existing text, fonts and vector drawing commands
+remain in the document. Two pixel-based blend textures adjust the page appearance
+to carry the watermark; pages are not replaced with flattened images. Text
+remains searchable and selectable. Page sizes, supported annotations and document
+metadata are retained. The watermark textures are tied to the original layout;
+editing content or removing them can change recovery.
+
+## Choose sync or async
+
+| Mode | Endpoint | What you receive |
+| --- | --- | --- |
+| Synchronous | `POST /watermarks/documents` | `200` verified file, or `202` if processing continues |
+| Asynchronous | `POST /watermarks/documents/async` | `202` job receipt; retrieve the result later or use a webhook |
+
+Detection also supports both modes: `POST /watermarks/documents/detect` or
+`POST /watermarks/documents/detect/async`.
+
+See [sync and async](/docs/api/async) for result handling. Async requests can select
+a `webhook_id` to receive [signed completion events](/docs/api/webhooks).
+
+## <span id="first-supported-profile" />Supported files
+
+- Passive, unencrypted PDFs with 1–8 unrotated pages, using standard page units.
+- Text, vector graphics and scanned images within the same PDF.
+- Up to 20 MB input and output; dashboard uploads remain limited to 4 MB.
+- Pages rendered at 144 dpi: up to 4 million pixels per page and 16 million total.
+- JSON metadata attachments are preserved byte-for-byte, but are not watermarked.
+  They must have a `.json` filename, an `application/json` media type and contain
+  a valid UTF-8 JSON object or array with at most 64 nesting levels. Limits:
+  64 KB each, 256 KB total, 16 files.
+- Links, text notes, popups and static `PlyBorder` border annotations are retained,
+  including their content, relationships and appearance streams. They are not
+  flattened into the page. Borders require a normal Form appearance stream;
+  actions on notes, popups and borders are not supported.
+- Forms, digital signatures, other annotation types, non-JSON attachments and
+  active content are rejected. Digitally signed files are never
+  silently modified. Scanned handwritten signatures are ordinary page content.
+
+Every final serialized page must recover the exact identifier and meet a 35 dB
+minimum rendered PSNR before the job succeeds. Verification uses a canonical
+144 dpi RGB rendering of page content, with annotations hidden. Annotations are
+preserved separately; their content does not receive its own watermark.
+Verification checks two rendering engines before publishing the result.
+The API includes standard substitute fonts for PDFs without embedded fonts.
+A viewer using different substitutes can render text
+differently; embedding fonts in source PDFs improves consistency across viewers.
+Different rendering engines, printing, re-saving and edits
+can affect recovery; arbitrary transformations are not guaranteed.
+
+## Billing and results
+
+One successful embed uses one credit per PDF, regardless of page count. A separate
+successful detection uses one credit. Failed embed jobs release their reservation.
+Saved results remain available for 24 hours. Retries start from the original PDF;
+replaying the same idempotency key returns the saved bytes without another charge.
+
+Detection returns a zero-based `units` entry for each page. Top-level `watermarked`
+is true only when every page recovers the same identifier. Partial or mixed-page
+results are visible in `units` and have a null top-level identifier.
+
+## SDKs
+
+Python: `client.embed_document(pdf_bytes, data)` and `client.detect_document(pdf_bytes)`.
+Node.js: `client.embedDocument(pdfBytes, data)` and `client.detectDocument(pdfBytes)`.
+The result's `image` field holds the native PDF bytes for compatibility with the
+existing result type; `content_type` / `contentType` is `application/pdf` and
+`filename` ends in `.pdf`.
+
+DOCX and PPTX remain under development. Use the separate [video endpoints](/docs/api/videos) for supported MP4/MOV files.
+
+## Asset library
+
+Use `X-Asset-ID` and `X-Source-Asset-ID` to find the output and original in the
+[asset library](/docs/api/assets). Etchv-hosted downloads last 30 days; records
+remain until deleted. Detection uploads do not create assets.
+
+## Choose where results are stored
+
+To store results in your own bucket, pass `storage_destination_id` and an optional
+`storage_key` as query parameters. Delivery retries reuse the verified output
+without another charge. The [storage guide](/docs/storage) covers provider setup,
+delivery status, and retention.

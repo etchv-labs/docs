@@ -1,0 +1,55 @@
+Use Etchv to connect a shared copy to a delivery, a recipient, or a generation
+record. Start with a request, then choose the integration that fits your application.
+
+<Cards>
+  <Card href="/docs/quickstart" title="Make your first request">
+    Watermark an image and read back its identifier.
+  </Card>
+  <Card href="/docs/api/embed" title="Explore the API">
+    Find request fields, response formats, and supported media.
+  </Card>
+</Cards>
+
+## How it works
+
+1. Send a file and a non-empty JSON object describing your record.
+2. Save the returned watermark ID alongside that record in your system.
+3. Distribute the watermarked file through your application.
+4. Detect a recovered copy and look up its ID in your records.
+
+The identifier is the SHA-256 digest of your canonicalized JSON. Detection
+returns that digest; keep the original data in your own system.
+
+## API base URL
+
+```text
+https://api.etchv.com
+```
+
+Send requests from your server with a scoped [API key](/docs/authentication).
+Use [synchronous requests](/docs/api/async) to wait for a result, or submit a
+background job and collect it through polling or [webhooks](/docs/api/webhooks).
+
+## Choose your integration
+
+| Integration | Get started |
+| --- | --- |
+| HTTP API | [Images](/docs/api/embed), [PDFs](/docs/api/documents), [video](/docs/api/videos) |
+| Official SDKs | [Node.js](/docs/sdks/node), [Python](/docs/sdks/python), [Go](/docs/sdks/go), [Rust](/docs/sdks/rust), [C#](/docs/sdks/csharp), [Java](/docs/sdks/java) |
+| AI assistants | [MCP server](/docs/mcp) |
+
+<Callout title="Test your distribution workflow">
+  Compression, resizing, and cropping can affect recovery. Test the changes your
+  files will encounter. A recovered ID is an investigative signal, not proof of
+  who shared a file.
+</Callout>
+
+## Keep your files connected
+
+Original uploads and successful watermarked results appear in the
+[asset library](/docs/api/assets). Etchv includes 30-day file downloads with no
+storage setup; records remain until deleted. You can also
+[connect your own bucket](/docs/storage) to control result retention.
+
+Watermarking and detection use your organization’s credits. See
+[plans and credits](/docs/billing) for trial access and format availability.

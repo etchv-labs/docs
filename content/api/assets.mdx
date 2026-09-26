@@ -1,0 +1,178 @@
+Every successful embedding creates records for the original upload and verified
+watermarked result. Etchv stores the files itself by default; no customer storage
+setup is required. If you select a customer bucket, that bucket stores the
+watermarked result instead. Both records remain visible in the asset library.
+The output’s `parent_asset_id` points to its original.
+
+Use the [Assets dashboard](/dashboard/assets) or the API to browse, download,
+rename and organize them. Detection uploads do not create assets. Jobs completed
+before the asset library launched are not backfilled.
+
+## Files and records
+
+Etchv-hosted files are downloadable for 30 days from completion. The record,
+including your name and metadata, stays until you delete it. After Etchv file
+expiry, `file_available` is `false` and `download_url` is `null`.
+
+If you [choose your own storage](/docs/storage), the result record exposes
+`storage_provider`, `storage_destination_id`, `storage_delivery_id` and
+`storage_status`. After delivery is `stored`, `file_expires_at` is `null` because
+your bucket controls retention. The same asset download endpoint reads from your
+bucket. Etchv removes its staged output after delivery; `staging_deleted_at`
+confirms cleanup. Until delivery, `staging_expires_at` identifies the recovery
+window. A failed upload stays visible and retryable, rather than silently
+changing the selected destination back to Etchv.
+
+Original uploads remain in Etchv storage for 30 days. Connecting a destination
+does not move existing outputs automatically; select **Move to my storage** for
+an available Etchv-hosted result. Each result has one selected storage destination.
+`file_available` reflects recorded storage state; provider access is checked on
+download, and may fail if you remove the object or revoke the connection.
+
+The job result endpoint remains available for 24 hours. Its response includes
+`X-Asset-ID` and `X-Source-Asset-ID`; successful job status responses also include
+`asset_id` and `source_asset_id`. Use those IDs with the asset API for the selected storage location’s
+download window. Replaying a job creates no extra assets or charges.
+
+Creating the two asset records, completing the job and settling its credits
+commit together. Storage or worker failures are retried through the durable job.
+Asset listing, updates, deletion and downloads do not consume watermarking credits.
+
+## Authentication
+
+Send `X-API-Key` on every request, including downloads. Access is limited to the
+key's organization and current membership. Create a key with the scopes you need:
+
+| Scope | Access |
+| --- | --- |
+| `assets:read` | List, inspect and download |
+| `assets:write` | Rename and replace metadata |
+| `assets:delete` | Delete; the key's owner must also be an organization owner or admin |
+
+Existing keys do not gain scopes automatically. Dashboard members can browse and
+edit their organization's assets; only owners and admins can delete them.
+
+## List assets
+
+<Endpoint method="GET" path="/assets" />
+
+```sh
+curl --get https://api.etchv.com/assets \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  --data-urlencode 'kind=watermarked' \
+  --data-urlencode 'media_type=image' \
+  --data-urlencode 'limit=25'
+```
+
+| Query | Meaning |
+| --- | --- |
+| `limit` | 1–100 records; default 25 |
+| `cursor` | Opaque `next_cursor` from the previous page |
+| `kind` | `source` or `watermarked`; omit for both |
+| `media_type` | `image`, `document` or `video`; omit for all |
+| `watermark_id` | Exact 64-character hexadecimal watermark ID |
+
+The response is `{ "items": [...], "next_cursor": "..." }`. Results are newest
+first. Continue until `next_cursor` is `null`, keeping the same filters. A cursor
+is tied to its organization and filters; changing them requires starting again.
+Listing returns `metadata: null` to keep pages small. Fetch a record for metadata.
+
+## Read a record
+
+<Endpoint method="GET" path="/assets/{asset_id}" />
+
+```sh
+curl "https://api.etchv.com/assets/$ASSET_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+| Field | Meaning |
+| --- | --- |
+| `id`, `name`, `version` | Stable asset ID, editable display name and edit version |
+| `kind`, `parent_asset_id` | Original or watermarked output, and the output's original asset ID |
+| `media_type`, `format`, `content_type` | Media category, detected format and MIME type |
+| `size_bytes`, `sha256` | File size and SHA-256 checksum of the stored bytes |
+| `request_id`, `watermark_id` | Creating job and embedded identifier; originals have no added watermark ID |
+| `created_at`, `updated_at`, `file_expires_at` | UTC timestamps |
+| `file_available`, `download_url` | Availability and a relative, authenticated download path |
+| `metadata` | Optional JSON attached to this record |
+
+Set `include_metadata=false` to omit the metadata contents. An unknown, deleted
+or other organization's asset returns `404`.
+
+## Download a file
+
+<Endpoint method="GET" path="/assets/{asset_id}/content" />
+
+```sh
+curl --fail-with-body "https://api.etchv.com/assets/$ASSET_ID/content" \
+  -H "X-API-Key: $ETCHV_API_KEY" --output saved-file.png
+```
+
+Use the correct extension for your asset. The response has its original MIME
+type and an attachment filename in `Content-Disposition`. Downloads are streamed
+through the authenticated API; the URL alone does not grant access. API keys
+must stay on your server. The dashboard handles signed-in downloads for you.
+
+## Rename or update metadata
+
+<Endpoint method="PATCH" path="/assets/{asset_id}" />
+
+```sh
+curl --request PATCH "https://api.etchv.com/assets/$ASSET_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY" -H 'Content-Type: application/json' \
+  --data '{"version":1,"name":"Spring campaign","metadata":{"campaign":"spring","recipient":"partner-42"}}'
+```
+
+Send the current `version` and at least one of `name` or `metadata`. A successful
+update returns the record with an incremented version. `409` means someone else
+changed it: reload, reconcile your changes, and send the new version.
+
+API request bodies are limited to 64 KB before JSON parsing. Names are 1–200 printable characters. Metadata is a JSON object of at most 8 KB,
+with at most eight nested levels. Keys must be 1–100 characters, without dots,
+null characters or a leading dollar sign. Numbers must be finite; integers must fit signed 64-bit values. Metadata is
+**replaced**, not merged; `{}` or `null` clears it. Unknown fields are rejected.
+
+Asset metadata is stored separately from the JSON used to create the watermark.
+Changing a name or metadata never rewrites the file or changes its watermark ID.
+The original embedding JSON is not retained automatically; keep sensitive records
+in your own system and use reference IDs here.
+
+## Delete assets
+
+<Endpoint method="DELETE" path="/assets/{asset_id}" />
+
+```sh
+curl --request DELETE "https://api.etchv.com/assets/$ASSET_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+For a batch, send 1–50 IDs:
+
+<Endpoint method="POST" path="/assets/bulk-delete" />
+
+```sh
+curl --request POST https://api.etchv.com/assets/bulk-delete \
+  -H "X-API-Key: $ETCHV_API_KEY" -H 'Content-Type: application/json' \
+  --data "{\"asset_ids\":[\"$SOURCE_ASSET_ID\",\"$ASSET_ID\"]}"
+```
+
+Deletion returns `204` with no body. The entire batch succeeds or none of it does;
+unknown or foreign IDs return `404`. Repeating deletion for an already deleted
+asset in your organization is safe.
+
+New reads and downloads stop immediately after deletion commits. A durable cleanup
+worker removes stored files and retries storage failures. A download already in
+progress may finish. Deleting an original does not delete its output, or vice
+versa; select both to remove both. Deleting an output also blocks its job result
+and idempotent replay, returning `410` without charging again.
+
+Deleting a record clears its name and custom metadata. Minimal internal deletion,
+job and billing records remain for cleanup, accounting and replay protection.
+Deletion cannot remove a watermark from copies already downloaded elsewhere.
+
+## SDKs
+
+All six official SDKs support listing, reading, updating,
+downloading and deleting assets. Their embedding results expose both asset IDs.
+Use an asset's current version when editing, and preserve your downloaded bytes.

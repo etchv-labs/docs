@@ -1,0 +1,23 @@
+The Etchv Zapier integration is in early access. Contact hello@etchv.com to join, and we'll send a private invite for your Zapier account.
+
+## Connect your account
+
+After accepting the invite:
+
+1. In Zapier, add **Etchv** to a Zap and select **Connect a new account**.
+2. Create an Etchv API key in [Dashboard API keys](/dashboard/api-keys). Choose `watermarks:embed` to mark files, `watermarks:detect` to inspect files, and `assets:read` if you will download an asset later.
+3. Paste the key into Zapier's connection form. Zapier checks it without running a paid media operation.
+
+## Watermark a file
+
+Start with a file trigger in your source app. Add **Etchv → Submit Watermark** and map the trigger's file, filename, and media type. Enter a JSON reference object and map a stable idempotency key from the source event. The action returns a receipt; it does not wait for the finished file.
+
+Add a Delay step, then **Etchv → Get Job Status** with the receipt's `status_url`. Continue checking until `succeeded` or `failed`. After success, run **Etchv → Get Job Result** with `result_url` and **Watermark** as the operation. The `file` output can be sent to a storage, email, or delivery action. Save `request_id`, `asset_id`, and the embedded reference in your source record.
+
+For detection, use **Submit Detection**, check its status, then choose **Detection** in **Get Job Result**. Route on `watermarked` and compare `watermark_id` to your own records. `watermarked: false` is a completed detection, not an error.
+
+## File and retry details
+
+Map a Zapier **File** field that resolves to an HTTPS file URL. The integration downloads it before uploading bytes to Etchv; it never sends your Etchv key to the source host. Use the same idempotency key for a retry of the same operation. A pending result is reported as pending rather than passed downstream as a file.
+
+Job results expire after 24 hours. If a watermarked result has expired but its asset remains available, use **Download Asset** with `asset_id` and a key that has `assets:read`. See [async jobs](/docs/api/async) for job timing and [asset retention](/docs/api/assets) for download windows.

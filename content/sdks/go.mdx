@@ -1,0 +1,161 @@
+Use the [Etchv Go SDK](https://github.com/etchv-labs/go-sdk) with Go 1.25+. MIT licensed.
+
+## Install
+
+```sh
+go get github.com/etchv-labs/go-sdk@v1.0.0
+```
+
+The package name is `etchv`. The client is safe for concurrent use; create one and reuse it.
+
+## Embed a file
+
+Set `ETCHV_API_KEY` to a server-side [API key](/docs/authentication) with the
+`watermarks:embed` scope and available credits. The following snippets use this
+configured client and a `ctx` context.
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    etchv "github.com/etchv-labs/go-sdk"
+)
+
+func main() {
+    ctx := context.Background()
+    client, err := etchv.New(os.Getenv("ETCHV_API_KEY"))
+    if err != nil { log.Fatal(err) }
+    key, err := client.CheckAPIKey(ctx) // no credits used
+    if err != nil { log.Fatal(err) }
+    log.Printf("organization %s, scopes %v", key.OrganizationID, key.Scopes)
+
+    file, err := os.ReadFile("photo.jpg")
+    if err != nil { log.Fatal(err) }
+    result, err := client.EmbedImage(ctx, file,
+        map[string]any{"asset": "photo-123"}, etchv.Options{Filename: "photo.jpg"})
+    if err != nil { log.Fatal(err) }
+    if err := os.WriteFile(result.Filename, result.Bytes, 0o600); err != nil { log.Fatal(err) }
+}
+```
+
+`CheckAPIKey` confirms the key and returns its organization, key ID, and scopes
+without using credits.
+
+## Images, documents and video
+
+`EmbedImage` / `DetectImage`, `EmbedDocument` / `DetectDocument`, `EmbedVideo` / `DetectVideo`. Write returned bytes directly using the result’s filename. Embedding also returns `WatermarkID`, `RequestID`, `AssetID`, and `SourceAssetID`. Detection returns `Watermarked`, `Confidence`, a nullable `WatermarkID`, and per-frame/page `Units`.
+
+See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos).
+
+## Retries and recovery
+
+Embedding and video detection poll durable jobs automatically. Use a stable idempotency key (`Options.IdempotencyKey`) to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `GetEmbedResult(ctx, requestID)` / `GetDetectionResult(ctx, requestID)`.
+
+Configure the client with options: `etchv.New(key, etchv.WithBaseURL(url), etchv.WithTimeout(d), etchv.WithHTTPClient(c))`. All calls accept a context for cancellation. Every failure is an `*etchv.Error`:
+
+```go
+var apiErr *etchv.Error
+if errors.As(err, &apiErr) {
+    log.Printf("HTTP %d, request %s: %s", apiErr.StatusCode, apiErr.RequestID, apiErr.Detail)
+}
+```
+
+It also carries `IdempotencyKey`, and `JobStatus` / `ErrorCode` when a job reports them. `StatusCode` is `0` for network failures, cancellation, or the client deadline; `errors.Is(err, context.DeadlineExceeded)` works. Common statuses: `401` invalid key, `402` credits/billing, `403` missing scope or role, `404` not found, `409` idempotency or version conflict, `410` expired or deleted result, `422` invalid input.
+
+Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.
+
+## Asset library
+
+Embedding returns IDs for the original and watermarked assets. Use `assets:read`
+to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
+membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+
+```go
+page, err := client.ListAssets(ctx, etchv.AssetListOptions{Kind: "watermarked", Limit: 25})
+if err != nil { return err }
+for _, item := range page.Items {
+    asset, err := client.GetAsset(ctx, item.ID)
+    if err != nil { return err }
+    _, err = client.UpdateAsset(ctx, asset.ID, etchv.AssetUpdate{
+        Version: asset.Version, Metadata: map[string]any{"campaign": "spring"},
+    })
+    if err != nil { return err }
+}
+// Continue with AssetListOptions{Cursor: *page.NextCursor} and the same filters until nil.
+file, err := client.DownloadAsset(ctx, assetID) // file.Bytes, file.ContentType, file.Filename
+```
+
+Edits replace metadata and require the current version. Reload and reconcile on
+`409`. Asset operations use no credits and never change the embedded watermark.
+`DeleteAsset` removes one asset and `DeleteAssets` removes up to 50 atomically.
+See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+
+## Async jobs and webhooks
+
+Regular embed/detect methods wait for a result. Submission methods return a `*etchv.Job`
+receipt without polling. Choose `etchv.MediaImages`, `etchv.MediaDocuments`, or
+`etchv.MediaVideos`; the example below assumes you have loaded a PDF into memory.
+
+```go
+job, err := client.SubmitEmbed(ctx, etchv.MediaDocuments, pdfBytes,
+    map[string]any{"delivery": "delivery_001"},
+    etchv.Options{Filename: "document.pdf", IdempotencyKey: "delivery_001", WebhookID: webhookID})
+if err != nil { return err }
+status, err := client.GetEmbedJob(ctx, job.RequestID)
+if err != nil { return err }
+if status.Status == "succeeded" {
+    result, err := client.GetEmbedResult(ctx, job.RequestID)
+    // ...
+}
+```
+
+Use `SubmitDetection` for detection without forensic data, `GetDetectionJob` for its
+status, and `GetDetectionResult` for the detection JSON.
+
+Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
+submitting. Persist your idempotency key before uploading. After success, collect
+the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+
+Manage endpoints with `CreateWebhook` (its `SigningSecret` is returned only once),
+`ListWebhooks`, `UpdateWebhook`, `DeleteWebhook`, `ListWebhookDeliveries`, and
+`RedeliverWebhook`. Verify every delivery against the raw request body:
+
+```go
+body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+if err != nil { http.Error(w, "bad request", 400); return }
+event, err := etchv.VerifyWebhook(body, r.Header, os.Getenv("ETCHV_WEBHOOK_SECRET"))
+if err != nil { http.Error(w, "invalid signature", 400); return }
+// Deduplicate on event.ID, enqueue work, then return 2xx.
+```
+
+`VerifyWebhook` checks the HMAC-SHA256 signature in constant time, rejects timestamps
+more than five minutes from your clock, and matches the event ID header.
+
+## Choose where results are stored
+
+Etchv storage is included by default. To use your own bucket, [connect and verify
+a destination](/docs/storage), then pass its ID and an optional object key:
+
+```go
+job, err := client.SubmitEmbed(ctx, etchv.MediaDocuments, pdfBytes,
+    map[string]any{"recipient": "customer-123"}, etchv.Options{
+        Filename: "report.pdf", IdempotencyKey: "report-export-001",
+        StorageDestinationID: destinationID, StorageKey: "reports/watermarked.pdf",
+    })
+if err != nil { return err }
+// After the watermark job reports succeeded:
+delivery, err := client.GetStorageDelivery(ctx, *job.StorageDeliveryID)
+```
+
+Wait for the watermark job to succeed before reading its delivery record;
+it returns `404` until then. With `storage:read`, poll delivery status until
+`stored` or a terminal failure; `RetryStorageDelivery` retries a failed or cancelled
+upload without additional credits, and `DownloadStorageDelivery` fetches a stored object.
+With `storage:write`, manage destinations with `CreateStorageDestination`,
+`VerifyStorageDestination`, `UpdateStorageDestination`, and `DeleteStorageDestination`,
+and move an existing asset with `CreateStorageDelivery`.
+See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).

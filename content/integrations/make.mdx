@@ -1,0 +1,16 @@
+The Etchv app for Make is in early access. Contact hello@etchv.com to join, and we'll share the app with your Make organization.
+
+## Connect your account
+
+Create an Etchv key in [Dashboard API keys](/dashboard/api-keys), then connect it in Make. Use `watermarks:embed` to watermark, `watermarks:detect` to inspect, and `assets:read` to download an existing asset. The connection check does not spend credits.
+
+## Assemble a scenario
+
+1. Start with a trigger that outputs a file name and file data. Map both into **Submit Watermark** or **Submit Detection** and select Image, PDF, or Video.
+2. For watermarking, enter a nonempty JSON reference object. Map a stable source event ID as the idempotency key. Save the returned `status_url` and `result_url`.
+3. Schedule a later check with **Get Job Status**. Repeat at roughly one-minute intervals until `succeeded` or `failed`, with a 35-minute deadline.
+4. After success, use **Get Watermarked File** for a binary file or **Get Detection Result** for JSON. Route failures using `request_id` and `error_code`.
+
+**Download Asset** reads a retained asset by ID. Supply a filename with the original media extension to file-result modules so the next Make module receives a useful name. If you select a storage destination, watermark success confirms Etchv verified the file; check [storage delivery](/docs/api/webhooks#customer-storage-delivery-events) separately before treating a bucket upload as finished.
+
+Keep the same idempotency key for a retry of the same request. A completed job result is available for 24 hours. See [async jobs](/docs/api/async) for the exact status and retention behavior.

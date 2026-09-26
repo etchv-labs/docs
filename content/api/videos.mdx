@@ -1,0 +1,89 @@
+<Endpoint method="POST" path="/watermarks/videos" />
+
+Watermark every frame in a supported MP4 or MOV while retaining its container,
+frame timing and supported audio. Use `POST /watermarks/videos/detect` to recover
+identifiers from all frames.
+
+## Choose sync or async
+
+| Mode | Endpoint | What you receive |
+| --- | --- | --- |
+| Synchronous | `POST /watermarks/videos` | `200` verified file, or `202` if processing continues |
+| Asynchronous | `POST /watermarks/videos/async` | `202` job receipt; retrieve the result later or use a webhook |
+
+Detection also supports both modes: `POST /watermarks/videos/detect` or
+`POST /watermarks/videos/detect/async`.
+
+See [sync and async](/docs/api/async) for result handling. Async requests can select
+a `webhook_id` to receive [signed completion events](/docs/api/webhooks).
+
+## <span id="first-supported-profile" />Supported files
+
+- MP4 or MOV containing one progressive, 8-bit H.264 video track (YUV 4:2:0).
+- Constant frame rate, 1–60 fps, starting at zero; square pixels and no rotation.
+- At most 120 seconds, 240 frames, 1 million pixels per frame and 40 million
+  decoded pixels total. Dimensions must be even. All limits apply together.
+- Up to 20 MB input and output; the dashboard accepts up to 4 MB.
+- No audio, or one synchronized mono/stereo AAC-LC track. Audio packets and timing
+  are copied and verified; audio itself is not watermarked.
+- HDR, variable frame rates, fragmented MP4, additional tracks, subtitles,
+  attachments and other codecs are not supported in this release.
+
+Output uses lossless H.264 encoding of YUV 4:2:0 pixels. This can increase file
+size and uses the High 4:4:4 Predictive coding profile even though the pixel format
+remains 4:2:0. Use a decoder that supports lossless H.264; universal browser or
+hardware playback is not promised. Container metadata is copied where supported,
+not guaranteed byte-for-byte.
+
+Embedding accounts for chroma conversion. Every frame of the final encoded
+video must recover the exact identifier and meet a minimum 35 dB PSNR before
+Etchv returns the result. Editing, transcoding and recompression can affect recovery.
+
+## Durable embedding and detection
+
+Send `file` and, for embedding, a non-empty JSON `data` object as multipart form
+fields. Authenticate with an API key scoped for `watermarks:embed` or
+`watermarks:detect`, respectively. Supply an `Idempotency-Key` to recover the same
+operation after a disconnected request.
+
+Both operations wait briefly, then return `202` if work is still running. Follow
+the result URL with the same API key:
+
+- Embedding: `/watermarks/jobs/{request_id}/result`
+- Detection: `/watermarks/detection-jobs/{request_id}/result`
+
+A completed embedding returns video bytes. Completed detection returns JSON with
+one zero-based `units` entry per frame. Top-level `watermarked` is true only when
+all frames recover the same identifier. Partial or differing identifiers remain
+visible in `units`.
+
+Work continues after client disconnection, with bounded retries and a 30-minute
+job deadline. Results are retrievable for 24 hours. Retry the same upload with
+the same key to retrieve the saved result; do not create a new key merely because
+a request timed out.
+
+## Credits
+
+Each successful embedding or detection uses one credit per started minute of
+video: up to 60 seconds costs one credit; over 60 and up to 120 seconds costs two.
+Embedding followed by detection is two separately charged operations. The full
+amount is reserved before work starts, refunded on failure and settled once.
+Retries and saved-result replay do not create another charge.
+
+Python SDK: `embed_video` / `detect_video`. Node.js SDK: `embedVideo` / `detectVideo`.
+SDKs poll durable jobs automatically within their configured timeout. The `image`
+field of an embedding result contains the native video bytes; use its returned
+filename and content type when saving the file.
+
+## Asset library
+
+Use `X-Asset-ID` and `X-Source-Asset-ID` to find the output and original in the
+[asset library](/docs/api/assets). Etchv-hosted downloads last 30 days; records
+remain until deleted. Detection uploads do not create assets.
+
+## Choose where results are stored
+
+To store results in your own bucket, pass `storage_destination_id` and an optional
+`storage_key` as query parameters. Delivery retries reuse the verified output
+without another charge. The [storage guide](/docs/storage) covers provider setup,
+delivery status, and retention.

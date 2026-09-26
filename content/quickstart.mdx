@@ -1,0 +1,77 @@
+You’ll need an image and an [Etchv account](/signup) with available credits.
+The seven-day trial includes 100 credits and requires no card. This walkthrough
+uses cURL; SDK examples are available for [Node.js](/docs/sdks/node) and
+[Python](/docs/sdks/python).
+
+## Set your API key
+
+Create a key in the [dashboard](/dashboard/api-keys) with `watermarks:embed` and
+`watermarks:detect` permissions. Store it on your server. For a local terminal:
+
+```sh
+export ETCHV_API_KEY="YOUR_API_KEY"
+```
+
+## Embed a watermark synchronously
+
+Replace `photo.jpg` with your image. The JSON describes the record you want to
+associate with this copy. Use a distinct idempotency key for each new operation.
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/images \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Idempotency-Key: campaign-01-partner-42" \
+  -F 'file=@photo.jpg' \
+  -F 'data={"asset":"campaign-01","recipient":"partner-42"}' \
+  -D response-headers.txt \
+  --output response-body
+```
+
+Open `response-headers.txt` to check the HTTP status:
+
+- `200`: the body is the watermarked image. Rename `response-body` to the filename
+  suggested by `Content-Disposition`, such as `photo-watermarked.jpg`.
+- `202`: processing is still running. Follow the authenticated `result_url` in
+  the JSON body to [retrieve the finished image](/docs/api/async#retrieve-a-pending-result-either-mode).
+- An error status: the body contains an error, not an image. Check
+  [errors and limits](/docs/api/errors) before retrying.
+
+Save `X-Watermark-ID` with your delivery record. `X-Request-ID` identifies the
+operation if you need to resume it or contact support.
+
+<Callout title="Save the returned bytes directly">
+  Renaming the file is fine. Recompressing or editing it can affect watermark recovery.
+</Callout>
+
+## Detect the watermark
+
+Use the filename you saved in the previous step:
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@photo-watermarked.jpg'
+```
+
+Compare the returned `watermark_id` with your saved `X-Watermark-ID`. A successful
+detection also includes `watermarked` and `confidence`. When no watermark is
+found, `watermark_id` is `null`. Detection recovers the identifier, not your
+original JSON.
+
+## Build it into your application
+
+The [SDKs](/docs/sdks/node) handle pending embedding jobs for you. Use a stable
+idempotency key to recover the same operation after a timeout without a second
+charge, and review [request recovery](/docs/api/errors#credits-and-retries).
+
+## Find your files again
+
+Save `X-Asset-ID` and `X-Source-Asset-ID` from the embedding response to find the
+output and original in your [asset library](/docs/api/assets). Etchv stores them
+by default, with 30-day downloads and records retained until deleted.
+
+## Prefer an asynchronous request?
+
+Use `POST /watermarks/images/async` with the same upload fields to receive a job
+receipt, then poll for the result or receive a webhook. See the
+[sync and async guide](/docs/api/async) for the full workflow.

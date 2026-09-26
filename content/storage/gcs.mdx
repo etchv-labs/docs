@@ -1,0 +1,104 @@
+Use Workload Identity Federation for keyless access, or connect with a service
+account JSON key. Your bucket controls retention after delivery; the
+[storage guide](/docs/storage) explains how files and asset records are managed.
+
+## 1. Grant access to your bucket
+
+Create a dedicated service account and a custom role containing only:
+
+- `storage.objects.create`
+- `storage.objects.get`
+
+Grant that role on the destination bucket. For a shared bucket, restrict the
+binding to the chosen object prefix, including Etchv's connection probe.
+[Google documents Cloud Storage permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions).
+
+## 2. Connect without a private key (recommended)
+
+Workload Identity Federation lets Etchv exchange its AWS identity for short-lived
+Google tokens. Your organization can keep its policy blocking service account
+keys. No Google API key or service account JSON key is needed.
+
+Enable the IAM, IAM Service Account Credentials and Security Token Service APIs
+in your Google project. Create a workload identity pool with an **AWS** provider.
+You will configure the exact role and organization subject in the next step.
+Use a dedicated pool for Etchv; do not grant access to every identity in a pool.
+
+In [Dashboard storage](/dashboard/storage), choose **Google Cloud Storage** and
+**Keyless**, then enter your bucket, prefix, existing visibility, workload identity
+provider resource name and service account email. Alternatively, send this body to
+`POST /storage/destinations` with a `storage:write` admin API key:
+
+```json
+{
+  "name": "Production GCS",
+  "provider": "gcs",
+  "bucket": "YOUR_BUCKET",
+  "prefix": "etchv",
+  "visibility": "private",
+  "gcs_auth": "workload_identity",
+  "gcs_workload_identity_provider": "projects/123456789/locations/global/workloadIdentityPools/etchv-pool/providers/aws-etchv",
+  "gcs_service_account": "etchv-storage@your-project.iam.gserviceaccount.com"
+}
+```
+
+Use the **project number**, not its name, in the provider resource. The response
+and dashboard details show `aws_principal_arn` and `gcs_subject`. The subject is
+unique to your Etchv organization and remains stable across its destinations.
+
+## 3. Trust the exact Etchv identity
+
+Configure the AWS provider to accept only the AWS account and role shown in the
+destination details. For a returned role ARN of
+`arn:aws:iam::AWS_ACCOUNT_ID:role/ROLE_NAME`, use:
+
+- AWS account ID: `AWS_ACCOUNT_ID`
+- Attribute mapping: `google.subject = assertion.arn.extract('assumed-role/ROLE_NAME/{session}')`
+- Attribute condition: `assertion.arn.startsWith('arn:aws:sts::AWS_ACCOUNT_ID:assumed-role/ROLE_NAME/etchv-')`
+
+On the dedicated service account, grant **Workload Identity User**
+(`roles/iam.workloadIdentityUser`) to this exact principal, substituting the
+returned `gcs_subject`:
+
+```text
+principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/subject/GCS_SUBJECT
+```
+
+Do not bind a whole AWS account, the entire pool, or all Etchv organization
+subjects. The role condition and exact subject binding together prevent another
+Etchv organization from using your storage connection. Google requires both the
+federation grant on the service account and the object role on the bucket.
+[Google's AWS federation guide](https://cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds).
+
+Select **Test connection**, or call `POST /storage/destinations/{id}/verify`.
+Etchv writes and reads a small probe. IAM changes may take a few minutes to
+propagate; retry the check after propagation. A failure leaves the destination
+unverified and unavailable for new watermark requests.
+
+## 4. Store outputs
+
+Pass the destination ID to any [embedding endpoint](/docs/storage), or select it
+in the dashboard. Existing SDK storage destination options work with keyless
+connections without changes to your embedding calls.
+
+Private records contain a `gs://bucket/key` URI; public records also contain a
+`https://storage.googleapis.com/bucket/key` URL. Public access must already be
+configured by you. Etchv does not change IAM policy or object ACLs.
+
+Uploads use generation preconditions to prevent overwriting existing objects.
+Private downloads read your bucket after delivery. Your bucket lifecycle controls
+retention; deleting an Etchv record does not delete the cloud object.
+[Google documents generation preconditions](https://cloud.google.com/storage/docs/request-preconditions).
+
+## Optional: service account JSON keys
+
+If your organization allows keys, choose **Service account JSON key** instead.
+Send `gcs_auth: "service_account_key"` and the JSON file contents encoded as the
+`credentials` string; omit the two federation fields. The standard token endpoint
+must be `https://oauth2.googleapis.com/token`. Credentials are encrypted and never
+returned in API responses. A general Google API key cannot replace this credential.
+
+Rotate a JSON key with `PATCH /storage/destinations/{id}`, supplying new
+`credentials`, then verify before revoking the old key. Keyless connections do not
+accept credential uploads. Authentication mode and provider details are immutable;
+create a new destination to change them.

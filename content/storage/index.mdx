@@ -1,0 +1,184 @@
+Etchv storage is included by default. Watermark a file without any storage
+configuration and Etchv stores the original and watermarked result for 30-day
+downloads. Asset records remain until you delete them.
+
+If you prefer your own storage, connect an Amazon S3 bucket, Google Cloud Storage
+bucket, or Azure Blob Storage container and select it for your request. Your
+bucket stores the watermarked result and controls its retention.
+
+## Choose a storage location
+
+| Choice | Where the watermarked result lives | File retention |
+| --- | --- | --- |
+| Etchv storage (default) | Etchv’s managed asset storage | 30 days |
+| Your connected bucket | Your S3, Google Cloud Storage or Azure Blob destination | Your bucket’s lifecycle policy |
+
+Both choices appear in the Etchv asset library. Asset records, watermark IDs and
+metadata remain in Etchv; downloads use the selected storage location. Original
+uploads retain their existing 30-day Etchv policy regardless of output storage.
+
+Connecting a bucket does not change existing assets or set an account default.
+Select it when watermarking, or use **Move to my storage** for an available
+Etchv-hosted result. Each result has one selected destination. Moving between
+customer buckets or back to Etchv is not supported in this release.
+
+## Durable delivery to your bucket
+
+1. Etchv watermarks the file and verifies the native output.
+2. It temporarily stages those bytes and commits the asset record and delivery
+   together. The asset records your selected provider immediately.
+3. A delivery worker writes the verified bytes to your bucket. Upload retries
+   reuse those bytes without another watermarking charge.
+4. After upload is confirmed, the asset download switches to your bucket and a
+   durable cleanup removes Etchv’s staged output and job-result object.
+
+A `200` binary response or `watermark.embed.succeeded` event confirms watermarking.
+Wait for delivery status `stored` or `storage.delivery.succeeded` to know that
+your bucket holds the result. Until then, downloads may read temporary staging.
+An upload failure remains visible against the chosen destination; Etchv does not
+silently change your storage choice. Failed staging is available for recovery
+for up to 30 days. `staging_deleted_at` on the asset confirms successful cleanup.
+
+For results delivered to your bucket, `file_expires_at` is `null`: your retention
+policy controls the file. Etchv never changes bucket access policies, overwrites
+different customer bytes, or automatically deletes customer objects.
+
+## Connect your provider
+
+- [Amazon S3: IAM role and external ID](/docs/storage/s3)
+- [Google Cloud Storage: keyless or service account](/docs/storage/gcs)
+- [Azure Blob Storage: container SAS](/docs/storage/azure)
+
+You can connect up to 10 destinations per organization. Owners and admins manage
+connections; members can view their organization’s destinations and deliveries.
+A connection check creates a small `.etchv-connection-dst_….txt` file under your
+prefix and reads it back. You may delete this probe yourself after verification.
+No delete or bucket-list permission is needed for normal exports.
+
+## Select storage on a request
+
+Leave these parameters out to use Etchv’s included storage. To use your own
+bucket instead for the result, the same query parameters work on `/watermarks/images`, `/watermarks/documents`,
+`/watermarks/videos` and their `/async` equivalents. Detection has no output file
+to export and rejects storage options.
+
+```sh
+curl -X POST \
+  "https://api.etchv.com/watermarks/documents/async?storage_destination_id=$DESTINATION_ID&storage_key=reports%2Fwatermarked.pdf&webhook_id=$WEBHOOK_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Idempotency-Key: invoice-storage-0001" \
+  -F 'file=@invoice.pdf' \
+  -F 'data={"recipient":"customer-123"}'
+```
+
+Storage works with both synchronous and asynchronous requests. The example
+above submits an async job. To wait synchronously, use `/watermarks/documents`
+without `/async` and omit `webhook_id`. With async, omit `webhook_id` if you prefer
+polling. [Compare both request modes](/docs/api/async).
+Destination and object key are part of the idempotency fingerprint: changing
+one while reusing an idempotency key returns `409`.
+
+| Option | Meaning |
+| --- | --- |
+| `storage_destination_id` | A verified, enabled destination in the same organization. |
+| `storage_key` | Optional full relative filename beneath the configured prefix, including any desired extension. URL-encode it. |
+
+The default object name is the unique watermarked asset ID plus its native
+extension. A prefix of `etchv` and key `reports/file.pdf` produces
+`etchv/reports/file.pdf`. Empty path segments, traversal, leading slashes and
+control characters are rejected. Combined prefix and key cannot exceed 800 UTF-8
+bytes. Exports are limited to 256 MiB of verified output.
+
+The file’s format and MIME type are preserved, including supported animation,
+TIFF pages, PSD/PSB layers, PDF text/vectors and video audio. A filename suffix does
+not convert the file.
+
+## Track and download a delivery
+
+The delivery record becomes readable once the watermark job succeeds; before
+that, its status endpoint returns `404`. Async job receipts and job status include `storage_delivery_id` and
+`storage_destination_id`. Successful synchronous binary responses include
+`X-Storage-Delivery-ID`. The watermarked asset record also includes this delivery ID.
+
+```sh
+curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+States are `queued`, `uploading`, `retrying`, `stored`, `failed` and `cancelled`.
+The response includes the provider, object key, provider URI, attempts, error code,
+and recent delivery history. A `public_url` is supplied only for destinations you
+configure as already public. That setting does not make a private bucket public.
+
+Private destinations return `s3://`, `gs://` or `azure://` references. Download
+through your own provider credentials or Etchv’s authenticated proxy:
+
+```sh
+curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID/content" \
+  -H "X-API-Key: $ETCHV_API_KEY" -o watermarked.pdf
+```
+
+Cloud credentials and write-capable SAS tokens are never returned in download
+links. The proxy remains available after temporary Etchv output cleanup, provided the
+asset record still exists, the connection is enabled and verified, and the
+customer object/credentials remain available. You can change or remove the object in your bucket. Etchv checks the stored
+bytes against the verified checksum when proxying a download; a changed object
+cannot complete a verified download. Direct public URLs follow your bucket’s
+access policy and do not pass through this check.
+
+## API management
+
+Use `storage:read` for listing destinations, reading deliveries and downloading
+exports. Use `storage:write` with an owner/admin-created key for management,
+verification, explicit exports and retries. Existing embedding keys can select
+an already verified destination in their own organization.
+
+| Method | Path | Action |
+| --- | --- | --- |
+| GET / POST | `/storage/destinations` | List / create destinations. |
+| PATCH | `/storage/destinations/{id}` | Set `enabled` or replace `credentials`. |
+| DELETE | `/storage/destinations/{id}` | Disconnect and discard stored credentials. |
+| POST | `/storage/destinations/{id}/verify` | Write and read a connection probe. |
+| GET | `/storage/destinations/{id}/deliveries` | List 50 deliveries; pass returned `next_cursor` as `after`. |
+| POST | `/storage/destinations/{id}/deliveries` | Move an Etchv-hosted watermarked result with `{"asset_id":"ast_…","key":"optional/file.png"}`. |
+| GET | `/storage/deliveries/{id}` | Read delivery status. |
+| POST | `/storage/deliveries/{id}/retry` | Retry a failed/cancelled upload without another charge. |
+| GET | `/storage/deliveries/{id}/content` | Authenticated download of a stored object. |
+
+Creating a connection returns its configuration, never credentials. Destination
+provider, bucket, prefix and visibility are immutable: create a new connection to
+change them. Credential rotation clears verification until you test the
+connection again. S3 uses role trust, so update the customer role directly.
+
+Each result has one selected customer destination and an immutable delivery key. Submitting the same
+pair and key returns the existing delivery. Another destination for that result
+returns `409`. Another key for that pair returns
+`409`. Existing customer objects are created conditionally; after an uncertain
+upload, a retry accepts an existing object only when its actual bytes match.
+
+## Retry, retention and deletion
+
+Ten automatic attempts span approximately 22 hours, with delays of 30 seconds,
+2 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 6 hours and 8 hours.
+You can retry a terminal failure up to 10 more times while the temporary
+verified output remains available (up to 30 days). Each manual retry starts a new automatic retry cycle.
+
+`provider_unavailable` means credentials, permissions or the cloud service need
+attention. `object_key_conflict` means a different object already occupies that
+key; Etchv will not overwrite it. `source_or_destination_unavailable` means the
+temporary source expired/was deleted, the organization was disabled, or the connection is
+missing, disabled or unverified. `export_too_large` indicates the output limit.
+`verified_source_mismatch` means the retained source failed its checksum check;
+Etchv cancels the export instead of sending unverified bytes.
+
+Deleting an Etchv asset stops future exports and proxy access. Removing a
+connection stops new exports and destroys its stored credentials. An upload
+already in flight may still finish. Neither action deletes customer cloud
+objects. Delivery records retain their operational history in Etchv.
+
+## SDKs
+
+All six SDKs accept a destination and optional object key on embedding options,
+including async submission, and provide a delivery-status method. See the
+[Python](/docs/sdks/python), [Node.js](/docs/sdks/node), [Go](/docs/sdks/go),
+[Rust](/docs/sdks/rust), [C#](/docs/sdks/csharp) and [Java](/docs/sdks/java) guides.

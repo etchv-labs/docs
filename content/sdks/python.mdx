@@ -1,0 +1,176 @@
+Requires Python 3.14. Fully typed and MIT licensed. The examples use a context
+manager to close the client; keep subsequent snippets inside that block or use
+another open client.
+
+## Install
+
+```sh
+pip install etchv-sdk
+```
+
+The package is named `etchv-sdk`; import it as `etchv`.
+
+## Embed and detect
+
+Create an API key in [your Etchv dashboard](/dashboard/api-keys).
+Set `ETCHV_API_KEY` in your environment. The key needs `watermarks:embed` and
+`watermarks:detect` scopes and an active plan with available credits.
+
+```python
+import os
+from pathlib import Path
+from etchv import Etchv
+
+with Etchv(os.environ["ETCHV_API_KEY"]) as client:
+    print(client.check_api_key())  # organization_id, key_id, scopes; no credits used
+    result = client.embed_image(
+        Path("photo.jpg").read_bytes(),
+        {"recipient": "customer-123"},
+        filename="photo.jpg",
+    )
+    Path(result.filename).write_bytes(result.image)
+    detection = client.detect_image(result.image)
+    print(detection.watermark_id, detection.confidence)
+```
+
+`check_api_key` confirms the key and lists its scopes without using credits.
+`embed_image` returns native image bytes, `watermark_id`, `request_id`, `content_type`,
+`filename`, `asset_id`, `source_asset_id`, and `storage_delivery_id`.
+`detect_image` returns `watermarked`, `confidence`, `watermark_id` (or `None`),
+`request_id`, and `units`. Read files as bytes and write the returned image without re-encoding
+it to preserve the embedded identifier. Forensic data must be a non-empty JSON object; the service
+embeds its SHA-256 digest. Detection recovers the digest, not the original data.
+Input must be encoded image bytes (up to 20 MB); image validation happens server-side.
+
+Optional constructor arguments: `base_url` (default `https://api.etchv.com`),
+`timeout` in seconds (default 120), and an HTTPX `transport` for tests.
+All media operations accept `filename` and `idempotency_key` keyword arguments.
+
+## Errors and recovery
+
+HTTP and protocol failures raise `EtchvError` or a subclass; inspect `status_code`,
+`detail`, and `request_id` (quote it to support). Typed subclasses cover common statuses:
+`AuthenticationError` (401), `PaymentRequiredError` (402), `PermissionDeniedError` (403),
+`NotFoundError` (404), `ConflictError` (409), `GoneError` (410), and `RateLimitError` (429).
+Other statuses, such as 422 for invalid or unrecoverable files, raise `EtchvError`.
+
+```python
+from etchv import DeadlineExceededError, EtchvError
+
+try:
+    result = client.embed_image(image, {"recipient": "customer-123"},
+                                idempotency_key="order-42")
+except DeadlineExceededError as error:
+    resume_later(error.detail["idempotency_key"], error.request_id)
+except EtchvError as error:
+    print(error.status_code, error.request_id)
+```
+
+Embedding automatically retries transient transport/service failures with the same
+idempotency key and polls pending jobs, returning the native image through one method call.
+The client wait defaults to 120 seconds; when it passes, `DeadlineExceededError` (status 0)
+carries recovery identifiers and the durable job continues.
+Reuse the same key and input to retrieve the saved result without another charge.
+A changed input with the same key returns 409. Saved results are available for 24 hours.
+Image and PDF detection do not automatically retry. Video detection follows
+durable jobs and polls for completion. No operation follows redirects.
+
+Keep API keys on your server. Confidence reflects decoded-bit certainty, not a
+guarantee of exact recovery after cropping, compression, or editing.
+
+To resume a known job, call `get_embed_result(request_id)` or
+`get_detection_result(request_id)`; both poll while the job is pending. Supply your own stable
+idempotency key when embedding if you need recovery across process restarts.
+
+Detection's `units` field reports each frame, page or layered composite separately. The
+top-level identifier is only present when all units recover the same watermark.
+
+## Documents and video
+
+Use `embed_document` / `detect_document` for [PDF watermarking](/docs/api/documents), and `embed_video` / `detect_video` for [supported MP4/MOV videos](/docs/api/videos). PDF preserves selectable text and vectors. Video operations use durable jobs and charge one credit per started minute. The `image` result field contains the native file bytes for every media type.
+
+## Asset library
+
+Embedding returns IDs for the original and watermarked assets. Use `assets:read`
+to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
+membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+
+```python
+page = client.list_assets(kind="watermarked", limit=25)
+for item in page["items"]:
+    asset = client.get_asset(item["id"])
+    updated = client.update_asset(asset["id"], version=asset["version"],
+                                  metadata={"campaign": "spring"})
+    if updated["file_available"]:
+        content = client.download_asset(updated["id"])
+# Pass cursor=page["next_cursor"] with the same filters for the next page.
+```
+
+Edits replace metadata and require the current version. Reload and reconcile on
+`409`. Asset operations use no credits and never change the embedded watermark.
+`delete_asset` removes one asset and `delete_assets` removes 1-50 atomically.
+See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+
+## Async jobs and webhooks
+
+Regular embed/detect methods wait for a result. Submission methods return a job
+receipt without polling. Choose `images`, `documents`, or `videos`; the example
+below assumes you have loaded a PDF and a video into memory.
+
+```python
+job = client.submit_embed("documents", pdf_bytes, {"delivery": "delivery_001"},
+    filename="document.pdf", idempotency_key="delivery_001", webhook_id=webhook_id)
+status = client.get_job(job["request_id"])  # queued, running, retrying, succeeded, failed
+if status["status"] == "succeeded":
+    result = client.get_embed_result(job["request_id"])
+
+scan = client.submit_detection("videos", video_bytes, idempotency_key="scan_001")
+detection = client.get_detection_result(scan["request_id"])
+```
+
+For detection status, call `get_job(request_id, detect=True)`.
+
+Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
+submitting. Persist your idempotency key before uploading. After success, collect
+the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+
+With `webhooks:read` and `webhooks:write` (owner or admin), manage endpoints from the SDK: `create_webhook(url)` returns the
+signing secret once, alongside `list_webhooks`, `update_webhook`, `delete_webhook`,
+`list_webhook_deliveries`, and `redeliver_webhook`. Verify each delivery against the
+raw request body before parsing it:
+
+```python
+from etchv import verify_webhook, WebhookVerificationError
+
+try:
+    event = verify_webhook(raw_body, request.headers, signing_secret)
+except WebhookVerificationError:
+    return 400
+# Deduplicate by event["id"], enqueue your work, then return 2xx.
+```
+
+`verify_webhook` checks the HMAC-SHA256 signature, rejects timestamps more than five
+minutes from your clock, and matches the event ID header.
+
+## Choose where results are stored
+
+Etchv storage is included by default. To use your own bucket, [connect and verify
+a destination](/docs/storage), then pass its ID and an optional object key:
+
+```python
+job = client.submit_embed("documents", pdf_bytes, {"recipient": "customer-123"},
+    filename="report.pdf", storage_destination_id=destination_id,
+    storage_key="reports/watermarked.pdf", idempotency_key="report-export-001")
+# After the watermark job reports succeeded:
+delivery = client.get_storage_delivery(job["storage_delivery_id"])
+if delivery["status"] == "stored":
+    data = client.download_storage_delivery(delivery["id"])
+```
+
+Wait for the watermark job to succeed before reading its delivery record;
+it returns `404` until then. With `storage:read`, poll delivery status until
+`stored` or a terminal failure; `retry_storage_delivery` retries a failed or cancelled
+upload without additional credits. With `storage:write`, manage destinations with
+`create_storage_destination`, `verify_storage_destination`, `update_storage_destination`,
+and `delete_storage_destination`, and move an existing asset with `create_storage_delivery`.
+See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).

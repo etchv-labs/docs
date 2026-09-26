@@ -1,0 +1,129 @@
+Receive a signed JSON event when an asynchronous watermarking or detection job succeeds or fails. Your application can continue working while Etchv processes the file.
+
+Webhooks are optional. You can also [poll for results](/docs/api/async#retrieve-a-pending-result-either-mode).
+
+## Create an endpoint
+
+Open [Dashboard webhooks](/dashboard/webhooks) or use the API. Organization owners and admins can manage endpoints; API access also requires `webhooks:write`. Read access requires `webhooks:read`.
+
+```bash
+curl https://api.etchv.com/webhooks \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://your-app.com/webhooks/etchv"}'
+```
+
+The `201` response contains `id`, `url`, `enabled`, `created_at`, and a one-time `signing_secret`. Save the secret securely on your server. It is different from your API key. If you lose it or need to rotate it, create a replacement endpoint, update your submissions, and disable the old endpoint after outstanding deliveries finish.
+
+Use a public HTTPS URL on port 443. Private, loopback, link-local, and reserved network addresses are blocked on every delivery; redirects are not followed. Avoid credentials and sensitive tokens in the URL. An organization can have up to ten endpoints.
+
+Pass the endpoint ID as `?webhook_id=wh_…` when [submitting an async job](/docs/api/async). Creating an endpoint alone does not subscribe it to all jobs.
+
+## Events
+
+| Event | Meaning |
+| --- | --- |
+| `watermark.embed.succeeded` | Verified output is ready to download |
+| `watermark.embed.failed` | Processing ended without a verified output; credits released |
+| `watermark.detect.succeeded` | Detection completed; fetch the JSON result to learn whether a watermark was found |
+| `watermark.detect.failed` | Detection could not complete; credits released |
+
+A failed individual processing attempt does not emit a failure event while Etchv is still retrying. The terminal job update, credit settlement, and event creation commit together.
+
+```json
+{
+  "id": "evt_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "type": "watermark.embed.succeeded",
+  "api_version": "2026-09-12",
+  "created_at": "2026-09-12T14:30:00+00:00",
+  "data": {
+    "request_id": "req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "status": "succeeded",
+    "operation": "embed",
+    "watermark_id": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "status_url": "/watermarks/jobs/req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "result_url": "/watermarks/jobs/req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/result",
+    "error_code": null
+  }
+}
+```
+
+The `data` object includes the full job receipt fields, including format, unit count, credits, attempts, webhook ID, asset IDs when available, and result expiration. On failure, `status` is `failed` and `error_code` explains the failure. The payload contains no media bytes, original forensic data, API keys, or public download credentials. Retrieve results with your organization's API key.
+
+## Verify every delivery
+
+Etchv sends these headers:
+
+| Header | Value |
+| --- | --- |
+| `X-Etchv-Event-ID` | Stable event ID; also present as `id` in the body |
+| `X-Etchv-Timestamp` | Unix timestamp in seconds for this delivery attempt |
+| `X-Etchv-Signature` | `v1=` followed by an HMAC-SHA256 hex digest |
+
+The signed bytes are `timestamp + "." + raw_request_body`. Use the **entire signing secret**, including `whsec_`, as the HMAC key. Verify the raw bytes before parsing JSON. Reject timestamps more than five minutes away from your server's clock and use constant-time comparison.
+
+```python
+import hashlib
+import hmac
+import time
+
+
+def verify_webhook(raw_body: bytes, headers, signing_secret: str) -> bool:
+    timestamp = headers.get("X-Etchv-Timestamp", "")
+    signature = headers.get("X-Etchv-Signature", "")
+    try:
+        if abs(time.time() - int(timestamp)) > 300:
+            return False
+    except (ValueError, TypeError):
+        return False
+    expected = "v1=" + hmac.new(
+        signing_secret.encode(),
+        timestamp.encode() + b"." + raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
+```
+
+After verification, parse JSON and check that the body `id` matches `X-Etchv-Event-ID`. Atomically store the event ID and enqueue your own work before returning a `2xx` response. Return `2xx` for already stored duplicates. Do not download or process large files inside the webhook handler.
+
+## Delivery guarantees and retries
+
+Delivery is at least once within a bounded retry window. Duplicates can arrive if your server accepted an event but its acknowledgment was lost. Events can arrive out of order; the payload is a snapshot at job completion. Deduplicate by event `id`, including after manual redelivery.
+
+Any `2xx` acknowledges delivery. Timeouts, network failures, redirects, and other HTTP statuses retry automatically, for up to ten total attempts. Retry delays are 30 seconds, 2 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 6 hours, and 8 hours—approximately 22 hours in total, plus queue time. Return promptly; socket operations time out after eight seconds and each gateway invocation is bounded to 25 seconds.
+
+Each retry keeps the same event ID and exact JSON body, with a fresh timestamp and signature. The result remains available independently of webhook delivery. An unreachable endpoint cannot cause a successful watermark job to fail or incur another charge.
+
+## Inspect and redeliver
+
+The dashboard shows delivery state, attempts, response status, event payload, and recent attempt history. Endpoint response bodies are not retained. Refresh to see the latest state.
+
+| Action | Endpoint |
+| --- | --- |
+| List endpoints | `GET /webhooks` |
+| Create endpoint | `POST /webhooks` with `{ "url": "https://…" }` |
+| Enable or disable | `PATCH /webhooks/{id}` with `{ "enabled": false }` |
+| Delete endpoint | `DELETE /webhooks/{id}` |
+| List deliveries | `GET /webhooks/{id}/deliveries` |
+| Redeliver | `POST /webhooks/{id}/deliveries/{event_id}/redeliver` |
+
+Delivery listing returns `data` and `next_cursor`; pass the cursor as `after` for the next page. Delivery records and payloads expire after 30 days. The last 30 attempts are retained per event. A delivered, exhausted, or cancelled event can be manually redelivered up to ten times while its record remains available. The endpoint must be enabled. A pending event cannot be redelivered concurrently.
+
+Disabling or deleting an endpoint cancels its deliveries when the dispatcher next picks them up. An already in-flight delivery may still arrive. Re-enabling does not automatically requeue cancelled events; redeliver them explicitly. Deleting an endpoint is permanent; use disable if you may need it again.
+
+## Customer storage delivery events
+
+Etchv storage is the default. These events apply only when you choose your own
+bucket as the storage destination for a watermarked result.
+
+When an async embedding request selects both `webhook_id` and
+`storage_destination_id`, the endpoint also receives `storage.delivery.succeeded`
+or `storage.delivery.failed` after the cloud upload reaches a terminal state.
+`watermark.embed.succeeded` confirms watermark verification, not cloud delivery.
+
+Storage event `data` includes `delivery_id`, `asset_id`, `request_id`,
+`destination_id`, `status`, `error_code`, `uri` and `public_url` (null for private
+storage). These events use the same signature verification and durable webhook
+retries described above. Deduplicate by event ID; do not depend on ordering
+between watermark and storage events. A manual upload retry creates a new
+terminal event. [Storage delivery details](/docs/storage).

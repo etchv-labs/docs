@@ -1,0 +1,190 @@
+Requires Node.js 22.12+. Works with ES modules and CommonJS, includes TypeScript
+declarations and has no runtime dependencies. MIT licensed.
+
+## Install
+
+```sh
+npm install @etchv-labs/sdk
+```
+
+## Embed and detect
+
+Create an API key in [your Etchv dashboard](/dashboard/api-keys).
+Set `ETCHV_API_KEY` in your environment. The key needs `watermarks:embed` and
+`watermarks:detect` scopes and an active plan with available credits.
+
+```typescript
+import { readFile, writeFile } from 'node:fs/promises';
+import { Etchv } from '@etchv-labs/sdk';
+
+const apiKey = process.env.ETCHV_API_KEY;
+if (!apiKey) throw new Error('Set ETCHV_API_KEY on your server');
+const client = new Etchv({ apiKey });
+const { organization_id, scopes } = await client.getApiKeyInfo(); // no credits used
+const result = await client.embedImage(
+  await readFile('photo.jpg'),
+  { recipient: 'customer-123' },
+  { filename: 'photo.jpg' },
+);
+await writeFile(result.filename, result.image);
+const detection = await client.detectImage(result.image);
+console.log(detection.watermarkId, detection.confidence);
+```
+
+`getApiKeyInfo` confirms the key and lists its scopes without using credits.
+`embedImage` returns native image bytes as a `Uint8Array`, `watermarkId`, `requestId`, `contentType`,
+`filename`, `assetId`, `sourceAssetId`, and `storageDeliveryId`.
+`detectImage` returns `watermarked`, `confidence`, `watermarkId` (or `null`),
+`requestId`, and `units`. Write the returned image bytes directly without re-encoding them
+to preserve the embedded identifier. Forensic data must be a non-empty JSON object; the service
+embeds its SHA-256 digest. Detection recovers the digest, not the original data.
+Inputs are encoded image bytes in a Buffer or Uint8Array (up to 20 MB).
+
+Constructor options: `apiKey`, `baseUrl` (default `https://api.etchv.com`),
+`timeout` in milliseconds (default 120000), and `fetch` for tests.
+Media operations accept `{ filename, idempotencyKey }` as their final options. Every
+method also accepts `signal` (an `AbortSignal`) and a per-call `timeout`.
+
+## Errors and recovery
+
+API failures reject with `EtchvError` or a subclass; inspect `statusCode`, `detail`,
+and `requestId` (quote it to support). Subclasses cover common statuses:
+`AuthenticationError` (401), `PaymentRequiredError` (402), `PermissionDeniedError` (403),
+`NotFoundError` (404), `ConflictError` (409), `GoneError` (410), `InvalidRequestError`
+(413/422), `RateLimitError` (429), and `ServiceUnavailableError` (5xx).
+
+```typescript
+import { EtchvError, EtchvTimeoutError } from '@etchv-labs/sdk';
+
+try {
+  await client.embedImage(bytes, data, { idempotencyKey });
+} catch (error) {
+  if (error instanceof EtchvTimeoutError) {
+    // Retry later with the same idempotencyKey and input.
+  } else if (error instanceof EtchvError) {
+    console.error(error.statusCode, error.requestId, error.detail);
+  } else {
+    throw error; // Network failures and invalid arguments (TypeError).
+  }
+}
+```
+
+Embedding automatically retries transient transport/service failures with the same
+idempotency key and polls pending jobs, returning the native image through one method call.
+The client wait defaults to 120 seconds; when it passes, `EtchvTimeoutError` (statusCode 0)
+carries recovery identifiers and the durable job continues.
+Reuse the same key and input to retrieve the saved result without another charge.
+A changed input with the same key returns 409. Saved results are available for 24 hours.
+Image and PDF detection do not automatically retry. Video detection follows
+durable jobs and polls for completion. No operation follows redirects.
+
+Keep API keys on your server; this SDK is not for browser applications.
+Confidence reflects decoded-bit certainty, not a guarantee of exact recovery
+after cropping, compression, or editing.
+
+To resume a known job, call `getEmbedResult(requestId)` or
+`getDetectionResult(requestId)`; both wait while the job is pending. Supply your own stable
+idempotency key when embedding if you need recovery across process restarts.
+
+Detection's `units` field reports each frame, page or layered composite separately. The
+top-level identifier is only present when all units recover the same watermark.
+
+## Documents and video
+
+Use `embedDocument` / `detectDocument` for [PDF watermarking](/docs/api/documents), and `embedVideo` / `detectVideo` for [supported MP4/MOV videos](/docs/api/videos). PDF preserves selectable text and vectors. Video operations use durable jobs and charge one credit per started minute. The `image` result field contains the native file bytes for every media type.
+
+## Asset library
+
+Embedding returns IDs for the original and watermarked assets. Use `assets:read`
+to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
+membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+
+```typescript
+const page = await client.listAssets({ kind: 'watermarked', limit: 25 });
+for (const item of page.items) {
+  const asset = await client.getAsset(item.id);
+  const updated = await client.updateAsset(asset.id, {
+    version: asset.version, metadata: { campaign: 'spring' },
+  });
+  if (updated.file_available) {
+    const bytes = await client.downloadAsset(updated.id);
+  }
+}
+// Pass cursor: page.next_cursor with the same filters for the next page.
+```
+
+Edits replace metadata and require the current version. Reload and reconcile on
+`409`. Asset operations use no credits and never change the embedded watermark.
+`deleteAsset` removes one asset and `deleteAssets` removes 1-50 atomically.
+See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+
+## Async jobs and webhooks
+
+Regular embed/detect methods wait for a result. Submission methods return a job
+receipt without polling. Choose `images`, `documents`, or `videos`; the example
+below assumes you have loaded a PDF and a video into memory.
+
+```typescript
+const job = await client.submitEmbed('documents', pdfBytes, {delivery: 'delivery_001'}, {
+  filename: 'document.pdf', idempotencyKey: 'delivery_001', webhookId: process.env.ETCHV_WEBHOOK_ID,
+});
+const status = await client.getJob(job.request_id); // queued, running, retrying, succeeded, failed
+const result = await client.getEmbedResult(job.request_id);
+
+const scan = await client.submitDetection('videos', videoBytes, { idempotencyKey: 'scan_001' });
+const detection = await client.getDetectionResult(scan.request_id);
+```
+
+For detection status, call `getJob(requestId, { detect: true })`.
+
+Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
+submitting. Persist your idempotency key before uploading. After success, collect
+the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+
+With `webhooks:read` and `webhooks:write` (owner or admin), manage endpoints from the SDK:
+`createWebhook({ url })` returns the signing secret once, alongside `listWebhooks`,
+`updateWebhook`, `deleteWebhook`, `listWebhookDeliveries`, and `redeliverWebhookEvent`.
+Verify each delivery against the raw request body before parsing it:
+
+```typescript
+import { parseWebhookEvent, WebhookVerificationError } from '@etchv-labs/sdk';
+
+try {
+  const event = parseWebhookEvent(rawBody, req.headers, process.env.ETCHV_WEBHOOK_SECRET);
+  // Deduplicate by event.id, enqueue your work, then return 2xx.
+} catch (error) {
+  if (error instanceof WebhookVerificationError) return res.sendStatus(400);
+  throw error;
+}
+```
+
+`parseWebhookEvent` checks the HMAC-SHA256 signature, rejects timestamps more than five
+minutes from your clock, and matches the event ID header. `verifyWebhookSignature`
+returns `true` or `false` instead of throwing.
+
+## Choose where results are stored
+
+Etchv storage is included by default. To use your own bucket, [connect and verify
+a destination](/docs/storage), then pass its ID and an optional object key:
+
+```typescript
+const job = await client.submitEmbed("documents", pdfBytes, {recipient: "customer-123"}, {
+  filename: "report.pdf", storageDestinationId: destinationId,
+  storageKey: "reports/watermarked.pdf", idempotencyKey: "report-export-001"
+});
+// After the watermark job reports succeeded:
+if (job.storage_delivery_id) {
+  const delivery = await client.getStorageDelivery(job.storage_delivery_id);
+  if (delivery.status === "stored") {
+    const bytes = await client.downloadStorageDelivery(delivery.id);
+  }
+}
+```
+
+Wait for the watermark job to succeed before reading its delivery record;
+it returns `404` until then. With `storage:read`, poll delivery status until
+`stored` or a terminal failure; `retryStorageDelivery` retries a failed or cancelled
+upload without additional credits. With `storage:write`, manage destinations with
+`createStorageDestination`, `verifyStorageDestination`, `updateStorageDestination`,
+and `deleteStorageDestination`, and move an existing asset with `createStorageDelivery`.
+See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).

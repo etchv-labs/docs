@@ -1,0 +1,31 @@
+Watermark or inspect a file as part of a workflow in Zapier, n8n, or Make. The connectors are in **early access** and not yet listed in the platforms' public directories. Contact hello@etchv.com to join.
+
+## Pick your platform
+
+| Platform | Actions | Availability |
+| --- | --- | --- |
+| [Zapier](/docs/integrations/zapier) | Submit watermark, submit detection, check status, collect result, download asset | Early access by private invite |
+| [n8n](/docs/integrations/n8n) | The same five operations in one node | Early access for self-hosted n8n |
+| [Make](/docs/integrations/make) | Submit watermark, submit detection, check status, collect watermark file or detection JSON, download asset | Early access by private app invite |
+
+You can use the [HTTP API](/docs/quickstart) now without waiting for a native listing.
+
+## What a workflow does
+
+1. A source step supplies an image, PDF, or video and a stable source event ID.
+2. **Submit Watermark** or **Submit Detection** returns a job receipt. Save `request_id`, `status_url`, and `result_url`.
+3. Wait about one minute, then use **Get Job Status**. Continue while the status is `queued`, `running`, or `retrying`.
+4. On `succeeded`, use the matching result action. Watermarking returns a file; detection returns JSON, including `watermarked` and `watermark_id`.
+5. On `failed`, stop and record `request_id` and `error_code`. Do not submit the same file as a new operation automatically.
+
+Set a 35-minute workflow deadline. The job itself has a 30-minute processing deadline. A result is available from the job result path for 24 hours; embedded assets may be downloadable for longer through the [asset library](/docs/api/assets).
+
+## Before you connect
+
+Create a key in [Dashboard API keys](/dashboard/api-keys). Select `watermarks:embed` for watermarking, `watermarks:detect` for detection, and `assets:read` if your workflow downloads an asset later. Save it in the platform's credential store. Connection testing uses `GET /auth/api-key` and does not spend credits.
+
+Every submission needs an **idempotency key**: a stable value for one logical source event and operation, such as `approved_asset_142_embed`. If a step times out, retry with the same key, file, reference data, and options. Etchv returns the same job without reserving another credit. A different request with the same key returns `409`.
+
+For watermarking, provide a nonempty JSON object of reference data, such as `{"asset":"142","delivery":"partner-a"}`. Keep the original record in your own system; Etchv embeds its digest and returns a watermark ID. Detection cannot reconstruct the JSON.
+
+The API accepts files up to 20 MB; the workflow platform may have a lower limit. A successful unmarked detection is still billable and returns `watermarked: false`. See [credits](/docs/billing), [async jobs](/docs/api/async), and [errors](/docs/api/errors).

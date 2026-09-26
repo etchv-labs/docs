@@ -1,0 +1,125 @@
+<Endpoint method="POST" path="/watermarks/images" />
+
+Embeds the SHA-256 digest of your JSON data into the image. The response is a
+native-format image with the identifier in a response header, or `202` while durable work continues.
+
+## Choose sync or async
+
+| Mode | Endpoint | What you receive |
+| --- | --- | --- |
+| Synchronous | `POST /watermarks/images` | `200` verified file, or `202` if processing continues |
+| Asynchronous | `POST /watermarks/images/async` | `202` job receipt; retrieve the result later or use a webhook |
+
+See [sync and async](/docs/api/async) for result handling. Async requests can select
+a `webhook_id` to receive [signed completion events](/docs/api/webhooks).
+
+## Request
+
+Authenticate with `X-API-Key` and the `watermarks:embed` scope. Submit a
+`multipart/form-data` request; let your HTTP client set the multipart boundary.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | Image file | Yes | An encoded image, at most 20 MB and 40 megapixels |
+| `data` | JSON string | Yes | A non-empty JSON object describing your reference record |
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/images \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Idempotency-Key: campaign-01-partner-42" \
+  -F 'file=@photo.jpg' \
+  -F 'data={"asset":"campaign-01","recipient":"partner-42"}' \
+  -D response-headers.txt \
+  --output response-body
+```
+
+Check the HTTP status in `response-headers.txt`: save a `200` body using the filename from `Content-Disposition`; a `202` body is JSON describing the job. The SDKs handle this automatically.
+
+## Response
+
+A successful request returns `200` with the MIME type of the original image format. File signatures determine the format, even if the upload has the wrong extension.
+
+| Header | Description |
+| --- | --- |
+| `X-Watermark-ID` | The 256-bit identifier represented as 64 hexadecimal characters |
+| `X-Asset-ID` | Verified output asset ID; downloads use the selected storage |
+| `X-Source-Asset-ID` | Original upload asset ID |
+| `X-Request-ID` | The operation's request identifier |
+| `Content-Disposition` | Suggested filename for the watermarked image |
+
+The service sorts JSON keys and removes insignificant whitespace before hashing.
+Keep the returned ID with the original record; the detector cannot reconstruct
+the JSON from its hash. Distinct recipient or delivery records produce distinct
+identifiers. Identical canonical data produces the same identifier.
+
+## Output verification
+
+The service decodes the final serialized file and verifies the embedded identifier in every frame/page or layered composite before
+returning the native file. If that check fails, it returns `422` rather than an image.
+Keep successful output bytes unchanged when writing them to disk.
+
+## Durable execution and duplicate requests
+
+Send a stable `Idempotency-Key` (8–128 letters, digits, hyphens or underscores)
+for each logical embedding operation. The service saves the original input and
+atomically creates a job with one reserved credit before processing it.
+Reusing the same key and input resumes that job or returns its saved image, with the
+same request ID and no second charge. Changed input with the same key returns `409`.
+
+The HTTP request waits up to 20 seconds for completion. If still running, it returns
+`202`, `Retry-After: 2`, and JSON containing `request_id`, `status_url`, and `result_url`.
+Use the same API key to GET `result_url` until it returns `200` image bytes or a terminal error.
+GET `status_url` returns job metadata. Jobs are scoped to your organization.
+
+Workers retry transient failures and verification failures up to five attempts,
+with backoff, using the original image and the same identifier each time. A worker
+crash is recovered after its lease expires. Work continues after a client disconnect.
+Jobs have a 30-minute processing deadline; when workers recover after an outage,
+they finalize expired jobs as failed and release their reservations.
+
+Only a native output whose every frame/page (or layered composite) recovers the expected identifier
+is marked successful. The saved result and its one-credit charge are committed
+together after upload. Terminal failures release the reservation. Retrieving a
+successful result never consumes another credit.
+
+## Retention
+
+The job result endpoint is available for 24 hours after completion. After that, job result retrieval
+returns `410`; the original key remains recorded and cannot create another charge.
+Use a new key for a genuinely new operation, including retrying a terminal failure.
+Successful jobs appear in the [asset library](/docs/api/assets). By default, Etchv stores originals and results for 30 days. If you choose a customer bucket, it stores the result instead and controls retention. Asset records stay until deleted.
+Encrypted processing copies become eligible for deletion after seven days; library
+copies expire separately. Job and billing metadata remain for idempotency and accounting.
+The JSON payload itself is not retained; its digest is embedded.
+
+## Native format preservation
+
+JPEG/JPG, PNG (including APNG), TIFF, PSD, PSB, GIF, BMP, PPM and WebP retain their
+original container. JPEG is encoded at quality 100 with 4:4:4 chroma; WebP uses
+lossless encoding; TIFF uses lossless Deflate. Palette and grayscale inputs can
+be expanded to RGB while retaining their format. RGB ICC profiles, EXIF and
+resolution are preserved where the container supports them. Arbitrary ancillary
+metadata is not guaranteed to survive.
+
+Animation keeps visible frames, timing and loop count. TIFF keeps every page.
+PSD/PSB keep original layer records and pixels and add two editable watermark
+layers. Do not hide or delete those layers: edits can change watermark recovery.
+Only 8-bit RGB layered files with opaque, faithfully renderable composites and a stored merged preview are
+accepted. Unsupported effects, high-bit-depth samples and CMYK inputs are rejected
+rather than flattened or reduced silently.
+
+RGBA transparency is preserved and watermark verification uses the visible image
+composited on white. Fully transparent frames cannot carry this watermark.
+Verification also enforces unchanged dimensions and at least 35 dB PSNR against
+the original visible image, including encoding loss. Exact preservation of the
+file bytes or compression settings is not promised.
+
+GIF uses palette-aware embedding and retains animation timing and loop count. Each frame must be at most one megapixel.
+See [image limits](/docs/api/errors) for frame, page and layered-file limits.
+
+## Choose where results are stored
+
+To store results in your own bucket, pass `storage_destination_id` and an optional
+`storage_key` as query parameters. Delivery retries reuse the verified output
+without another charge. The [storage guide](/docs/storage) covers provider setup,
+delivery status, and retention.

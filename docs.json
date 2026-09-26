@@ -1,0 +1,191 @@
+{
+  "groups": [
+    {
+      "title": "Getting started",
+      "pages": [
+        {
+          "slug": "",
+          "file": "overview.mdx",
+          "title": "Overview",
+          "description": "Watermark images, PDFs and videos. Connect each copy to a record you can recover later."
+        },
+        {
+          "slug": "quickstart",
+          "file": "quickstart.mdx",
+          "title": "Quickstart",
+          "description": "Add a watermark to an image, save the result, and recover its identifier."
+        },
+        {
+          "slug": "authentication",
+          "file": "authentication.mdx",
+          "title": "Authentication",
+          "description": "Create an API key with the permissions your integration needs."
+        },
+        {
+          "slug": "billing",
+          "file": "billing.mdx",
+          "title": "Plans and credits",
+          "description": "Understand trial access, format availability, and how credits are used."
+        },
+        {
+          "slug": "mcp",
+          "file": "mcp.mdx",
+          "title": "MCP server",
+          "description": "Watermark and inspect media from your AI assistant."
+        }
+      ]
+    },
+    {
+      "title": "Automation integrations",
+      "pages": [
+        {
+          "slug": "integrations",
+          "file": "integrations/index.mdx",
+          "title": "Automate with Etchv",
+          "description": "Use Etchv in Zapier, n8n, and Make workflows."
+        },
+        {
+          "slug": "integrations/zapier",
+          "file": "integrations/zapier.mdx",
+          "title": "Zapier",
+          "description": "Add watermarking and detection to a Zap."
+        },
+        {
+          "slug": "integrations/n8n",
+          "file": "integrations/n8n.mdx",
+          "title": "n8n",
+          "description": "Add watermarking and detection to an n8n workflow."
+        },
+        {
+          "slug": "integrations/make",
+          "file": "integrations/make.mdx",
+          "title": "Make",
+          "description": "Add watermarking and detection to a Make scenario."
+        }
+      ]
+    },
+    {
+      "title": "API reference",
+      "pages": [
+        {
+          "slug": "api/async",
+          "file": "api/async.mdx",
+          "title": "Sync and async",
+          "description": "Wait for a result, or submit a background job and collect it later."
+        },
+        {
+          "slug": "api/webhooks",
+          "file": "api/webhooks.mdx",
+          "title": "Webhooks",
+          "description": "Receive and verify signed events when a job finishes."
+        },
+        {
+          "slug": "api/embed",
+          "file": "api/embed.mdx",
+          "title": "Embed an image",
+          "description": "Add an invisible identifier while preserving the image’s format."
+        },
+        {
+          "slug": "api/detect",
+          "file": "api/detect.mdx",
+          "title": "Detect a watermark",
+          "description": "Read an image’s watermark and match it to your records."
+        },
+        {
+          "slug": "api/documents",
+          "file": "api/documents.mdx",
+          "title": "PDF watermarking",
+          "description": "Watermark PDF pages while preserving selectable text and vector content."
+        },
+        {
+          "slug": "api/videos",
+          "file": "api/videos.mdx",
+          "title": "Video watermarking",
+          "description": "Watermark H.264 MP4 and MOV files while preserving supported audio."
+        },
+        {
+          "slug": "api/assets",
+          "file": "api/assets.mdx",
+          "title": "Asset library",
+          "description": "Browse, download, and manage originals and watermarked results."
+        },
+        {
+          "slug": "api/errors",
+          "file": "api/errors.mdx",
+          "title": "Errors and limits",
+          "description": "Understand response codes, upload limits, and request recovery."
+        }
+      ]
+    },
+    {
+      "title": "Storage",
+      "pages": [
+        {
+          "slug": "storage",
+          "file": "storage/index.mdx",
+          "title": "Choose your storage",
+          "description": "Keep results in Etchv storage or connect your own cloud bucket."
+        },
+        {
+          "slug": "storage/s3",
+          "file": "storage/s3.mdx",
+          "title": "Amazon S3",
+          "description": "Connect an S3 bucket using a cross-account IAM role."
+        },
+        {
+          "slug": "storage/gcs",
+          "file": "storage/gcs.mdx",
+          "title": "Google Cloud Storage",
+          "description": "Connect a Google Cloud Storage bucket with keyless or service account access."
+        },
+        {
+          "slug": "storage/azure",
+          "file": "storage/azure.mdx",
+          "title": "Azure Blob Storage",
+          "description": "Connect an Azure container using a scoped SAS token."
+        }
+      ]
+    },
+    {
+      "title": "SDKs",
+      "pages": [
+        {
+          "slug": "sdks/node",
+          "file": "sdks/node.mdx",
+          "title": "Node.js",
+          "description": "Watermark images, PDFs and videos from a Node.js server."
+        },
+        {
+          "slug": "sdks/python",
+          "file": "sdks/python.mdx",
+          "title": "Python",
+          "description": "Watermark images, PDFs and videos in Python."
+        },
+        {
+          "slug": "sdks/go",
+          "file": "sdks/go.mdx",
+          "title": "Go",
+          "description": "Watermark images, PDFs and videos in Go."
+        },
+        {
+          "slug": "sdks/rust",
+          "file": "sdks/rust.mdx",
+          "title": "Rust",
+          "description": "Watermark images, PDFs and videos in Rust."
+        },
+        {
+          "slug": "sdks/csharp",
+          "file": "sdks/csharp.mdx",
+          "title": "C#",
+          "description": "Watermark images, PDFs and videos in .NET."
+        },
+        {
+          "slug": "sdks/java",
+          "file": "sdks/java.mdx",
+          "title": "Java",
+          "description": "Watermark images, PDFs and videos in Java."
+        }
+      ]
+    }
+  ]
+}
