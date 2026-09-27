@@ -27,8 +27,11 @@ a `webhook_id` to receive [signed completion events](/docs/api/webhooks).
 
 - Passive, unencrypted PDFs with 1–8 unrotated pages, using standard page units.
 - Text, vector graphics and scanned images within the same PDF.
-- Up to 20 MB input and output; dashboard uploads remain limited to 4 MB.
-- Pages rendered at 144 dpi: up to 4 million pixels per page and 16 million total.
+- Up to 20 MB input and 64 MB watermarked output (the watermark textures can make
+  a photo-heavy PDF several times larger than the source); detection accepts up to
+  20 MB and the dashboard up to 4 MB.
+- Pages rendered at 144 dpi: up to 4 million pixels per page and 16.8 million
+  total, enough for eight A4 or US Letter pages.
 - JSON metadata attachments are preserved byte-for-byte, but are not watermarked.
   They must have a `.json` filename, an `application/json` media type and contain
   a valid UTF-8 JSON object or array with at most 64 nesting levels. Limits:
@@ -37,8 +40,11 @@ a `webhook_id` to receive [signed completion events](/docs/api/webhooks).
   including their content, relationships and appearance streams. They are not
   flattened into the page. Borders require a normal Form appearance stream;
   actions on notes, popups and borders are not supported.
+- Actions a viewer runs by itself when the document or a page opens (an open
+  action, document or page additional actions, and document-level JavaScript) are
+  removed from the watermarked copy instead of refusing the file.
 - Forms, digital signatures, other annotation types, non-JSON attachments and
-  active content are rejected. Digitally signed files are never
+  other active content, such as scripts on links, are rejected. Digitally signed files are never
   silently modified. Scanned handwritten signatures are ordinary page content.
 
 Every final serialized page must recover the exact identifier and meet a 35 dB

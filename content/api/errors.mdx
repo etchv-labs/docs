@@ -12,6 +12,7 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
 | `410` | Job result or asset file expired/deleted | Check the asset library; records for expired files remain readable until deleted |
 | `413` | File exceeds a size limit, or the request body exceeds 55 MB | Reduce the upload size or pixel dimensions |
+| `415` | Recognized but unsupported file format, such as HEIC, HEIF or AVIF | Convert the file to a supported format, such as JPEG, PNG or WebP |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |
 
@@ -26,6 +27,9 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | GIF frame | 1 megapixel |
 | PSD/PSB canvas | 4 megapixels |
 | PSD/PSB layers | 64 layers and 16 megapixels total, including the two added watermark layers |
+
+HEIC, HEIF and AVIF photos are not supported yet and return `415` with the
+format's name; convert them to JPEG, PNG or WebP first.
 
 Send encoded image bytes, not a URL or base64 string. The `data` field must be a
 non-empty JSON object. Embedding preserves the original format; high-bit-depth
