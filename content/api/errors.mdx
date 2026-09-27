@@ -11,7 +11,7 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | `404` | Asset not found or outside your organization | Check the asset ID and organization |
 | `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
 | `410` | Job result or asset file expired/deleted | Check the asset library; records for expired files remain readable until deleted |
-| `413` | Image exceeds a size limit | Reduce the upload size or pixel dimensions |
+| `413` | File exceeds a size limit, or the request body exceeds 55 MB | Reduce the upload size or pixel dimensions |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |
 
@@ -19,7 +19,7 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 
 | Limit | Maximum |
 | --- | --- |
-| API upload and delivered file | 20 MB |
+| API upload and delivered file | 50 MB |
 | Dashboard upload | 4 MB |
 | Frames or pages per image | 32, including an APNG default/poster image |
 | Total pixels across frames or pages | 40 megapixels |

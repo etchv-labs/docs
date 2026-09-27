@@ -93,7 +93,8 @@ job. The MCP server does not poll indefinitely. See [sync and async](/docs/api/a
 
 Outputs preserve their original format, including supported image animation,
 TIFF pages and editable layers. Plan restrictions and [API limits](/docs/api/errors)
-still apply. MCP uploads are limited to 20 MiB and downloads to 512 MiB. The API must start
+still apply. MCP image uploads are limited to 50 MiB, PDF and video uploads to 20 MiB, and
+downloads to 512 MiB. The API must start
 responding within 45 seconds, and a download may take up to 10 minutes.
 Watermarking uses one credit per image or PDF file and one per started video
 minute. Detection also uses API credits.

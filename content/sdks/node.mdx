@@ -38,7 +38,7 @@ console.log(detection.watermarkId, detection.confidence);
 `requestId`, and `units`. Write the returned image bytes directly without re-encoding them
 to preserve the embedded identifier. Forensic data must be a non-empty JSON object; the service
 embeds its SHA-256 digest. Detection recovers the digest, not the original data.
-Inputs are encoded image bytes in a Buffer or Uint8Array (up to 20 MB).
+Inputs are encoded image bytes in a Buffer or Uint8Array (up to 50 MB).
 
 Constructor options: `apiKey`, `baseUrl` (default `https://api.etchv.com`),
 `timeout` in milliseconds (default 120000), and `fetch` for tests.

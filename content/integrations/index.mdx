@@ -28,4 +28,4 @@ Every submission needs an **idempotency key**: a stable value for one logical so
 
 For watermarking, provide a nonempty JSON object of reference data, such as `{"asset":"142","delivery":"partner-a"}`. Keep the original record in your own system; Etchv embeds its digest and returns a watermark ID. Detection cannot reconstruct the JSON.
 
-The API accepts files up to 20 MB; the workflow platform may have a lower limit. A successful unmarked detection is still billable and returns `watermarked: false`. See [credits](/docs/billing), [async jobs](/docs/api/async), and [errors](/docs/api/errors).
+The API accepts images up to 50 MB and PDFs and videos up to 20 MB; the workflow platform may have a lower limit. A successful unmarked detection is still billable and returns `watermarked: false`. See [credits](/docs/billing), [async jobs](/docs/api/async), and [errors](/docs/api/errors).
