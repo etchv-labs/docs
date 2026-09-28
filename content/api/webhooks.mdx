@@ -59,6 +59,7 @@ Etchv sends these headers:
 | `X-Etchv-Event-ID` | Stable event ID; also present as `id` in the body |
 | `X-Etchv-Timestamp` | Unix timestamp in seconds for this delivery attempt |
 | `X-Etchv-Signature` | `v1=` followed by an HMAC-SHA256 hex digest |
+| `X-Request-ID` | The request the event belongs to; quote it when contacting support |
 
 The signed bytes are `timestamp + "." + raw_request_body`. Use the **entire signing secret**, including `whsec_`, as the HMAC key. Verify the raw bytes before parsing JSON. Reject timestamps more than five minutes away from your server's clock and use constant-time comparison.
 
