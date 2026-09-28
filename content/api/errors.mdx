@@ -20,7 +20,8 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 
 | Limit | Maximum |
 | --- | --- |
-| API upload and delivered file | 50 MB |
+| API upload | 50 MB |
+| Delivered file | 192 MB (lossless delivery can be larger than the upload: a 1-bit image is delivered with 8-bit color, and JPEG-compressed TIFF pages with lossless compression) |
 | Dashboard upload | 4 MB |
 | Frames or pages per image | 32, including an APNG default/poster image |
 | Total pixels across frames or pages | 40 megapixels |
