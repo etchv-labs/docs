@@ -89,6 +89,13 @@ idempotency key when embedding if you need recovery across process restarts.
 Detection's `units` field reports each frame, page or layered composite separately. The
 top-level identifier is only present when all units recover the same watermark.
 
+## GPU processing
+
+On Business and Enterprise plans, pass `{ accelerator: 'gpu' }` to any embed or detect
+call. GPU processing uses 3× credits; if no GPU is ready, the request runs on CPU
+at standard credits. `result.accelerator` reports the hardware that ran. See
+[GPU processing](/docs/api/gpu).
+
 ## Documents and video
 
 Use `embedDocument` / `detectDocument` for [PDF watermarking](/docs/api/documents), and `embedVideo` / `detectVideo` for [supported MP4/MOV videos](/docs/api/videos). PDF preserves selectable text and vectors. Video operations use durable jobs and charge one credit per started minute. The `image` result field contains the native file bytes for every media type.

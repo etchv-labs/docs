@@ -135,6 +135,13 @@ if err != nil { http.Error(w, "invalid signature", 400); return }
 `VerifyWebhook` checks the HMAC-SHA256 signature in constant time, rejects timestamps
 more than five minutes from your clock, and matches the event ID header.
 
+## GPU processing
+
+On Business and Enterprise plans, pass `etchv.Options{Accelerator: etchv.AcceleratorGPU}` to any embed or detect
+call. GPU processing uses 3× credits; if no GPU is ready, the request runs on CPU
+at standard credits. `result.Accelerator` reports the hardware that ran. See
+[GPU processing](/docs/api/gpu).
+
 ## Choose where results are stored
 
 Etchv storage is included by default. To use your own bucket, [connect and verify

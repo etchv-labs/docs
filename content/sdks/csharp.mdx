@@ -128,6 +128,13 @@ if (!WebhookSignature.Verify(buffer.ToArray(), request.Headers["X-Etchv-Timestam
 `Verify` checks the HMAC-SHA256 signature in constant time and rejects timestamps more
 than five minutes from your clock.
 
+## GPU processing
+
+On Business and Enterprise plans, pass `new RequestOptions(Accelerator: Accelerator.Gpu)` to any embed or detect
+call. GPU processing uses 3× credits; if no GPU is ready, the request runs on CPU
+at standard credits. `result.Accelerator` reports the hardware that ran. See
+[GPU processing](/docs/api/gpu).
+
 ## Choose where results are stored
 
 Etchv storage is included by default. To use your own bucket, [connect and verify
