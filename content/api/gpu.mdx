@@ -1,0 +1,71 @@
+Business and Enterprise plans can run any watermarking or detection operation on
+a GPU by adding `accelerator=gpu` to the request. GPU processing is fastest for
+PDFs and video. Results are the same as on CPU: the same native format, identifier
+and verification.
+
+## Request GPU processing
+
+Add the query parameter to any embedding or detection endpoint, sync or async:
+[images](/docs/api/embed), [image detection](/docs/api/detect),
+[PDFs](/docs/api/documents) and [video](/docs/api/videos).
+
+| Parameter | Values | Default |
+| --- | --- | --- |
+| `accelerator` | `cpu` or `gpu` | `cpu` |
+
+```sh
+curl --fail-with-body "https://api.etchv.com/watermarks/videos/async?accelerator=gpu" \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Idempotency-Key: launch-video-partner-42" \
+  -F 'file=@launch.mp4' \
+  -F 'data={"asset":"launch-video","recipient":"partner-42"}'
+```
+
+The SDKs take the same option:
+
+<ResponsiveTable>
+
+| SDK | Option |
+| --- | --- |
+| [Python](/docs/sdks/python) | `accelerator="gpu"` |
+| [Node.js](/docs/sdks/node) | `{ accelerator: 'gpu' }` |
+| [Go](/docs/sdks/go) | `etchv.Options{Accelerator: etchv.AcceleratorGPU}` |
+| [Rust](/docs/sdks/rust) | `Options::new().accelerator(Accelerator::Gpu)` |
+| [C#](/docs/sdks/csharp) | `new RequestOptions(Accelerator: Accelerator.Gpu)` |
+| [Java](/docs/sdks/java) | `options.withAccelerator(EtchvClient.Accelerator.GPU)` |
+
+</ResponsiveTable>
+
+The [dashboard](/dashboard), the [MCP server](/docs/mcp) and the
+[automation integrations](/docs/integrations) offer the same choice.
+
+## Credits and fallback
+
+A GPU operation uses three times the normal credits. Etchv reserves that amount
+when it accepts the request.
+
+If no GPU is ready, the operation runs on CPU instead and is charged the normal
+credits; the rest of the reservation is released. Etchv adds GPU capacity as GPU
+requests arrive, so the first request after a quiet period may run on CPU. Failed
+operations release all reserved credits, as usual.
+
+## See which accelerator ran
+
+| Where | Field |
+| --- | --- |
+| Sync results and job result downloads | `X-Etchv-Accelerator` header: `gpu` or `cpu` |
+| Job status, receipts and webhook events | `accelerator_requested` and `accelerator` (`null` until processing starts) |
+| [Usage](/dashboard/history) | The accelerator of each operation |
+
+A completed job's `credits` shows what was charged.
+
+## Errors
+
+| Status | Reason |
+| --- | --- |
+| `403` | Your plan does not include GPU processing. Upgrade to Business or Enterprise |
+| `409` | The idempotency key was already used with a different `accelerator` |
+| `422` | `accelerator` is not `cpu` or `gpu` |
+
+GPU requests count toward your plan's [rate limits](/docs/api/errors#rate-limits)
+like any other request.

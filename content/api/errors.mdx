@@ -7,14 +7,44 @@ HTTP status and any `X-Request-ID` header when investigating a failed request.
 | --- | --- | --- |
 | `401` | Missing or invalid authentication | Check your API key |
 | `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
-| `403` | Insufficient scope, membership, or plan access | Check [key permissions](/docs/authentication) and [plan formats](/docs/billing) |
+| `403` | Insufficient scope, membership, or plan access, including GPU processing below Business | Check [key permissions](/docs/authentication), [plan formats](/docs/billing) and [GPU processing](/docs/api/gpu) |
 | `404` | Asset not found or outside your organization | Check the asset ID and organization |
 | `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
 | `410` | Job result or asset file expired/deleted | Check the asset library; records for expired files remain readable until deleted |
 | `413` | File exceeds a size limit, or the request body exceeds 55 MB | Reduce the upload size or pixel dimensions |
 | `415` | Recognized but unsupported file format, such as HEIC, HEIF or AVIF | Convert the file to a supported format, such as JPEG, PNG or WebP |
 | `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
+| `429` | Rate or concurrency limit reached | Wait for the `Retry-After` seconds, then retry. See [rate limits](#rate-limits) |
 | `503` | A required service is unavailable | Check service status and handle the failure in your application |
+
+## Rate limits
+
+Every plan has two limits, applied per organization across all of its API keys and
+the dashboard. See [limits by plan](/docs/billing#api-rate-limits).
+
+- **Requests per minute** counts every authenticated API request, including job
+  status checks, result downloads, asset requests and requests that are refused.
+  The count resets at the start of each minute.
+- **Concurrent operations** counts embedding and asynchronous detection jobs that are
+  queued or running. Synchronous image and PDF detection count toward requests per
+  minute only. Replaying an existing idempotency key is never rejected.
+
+A request over either limit returns `429` without reserving credits. Its JSON
+`detail` includes a `code` of `rate_limited` or `concurrency_limited` and the
+`limit`, and the `Retry-After` header gives the seconds to wait. Responses for
+plans with a rate limit also carry:
+
+| Header | Meaning |
+| --- | --- |
+| `X-RateLimit-Limit` | Requests allowed in the current minute |
+| `X-RateLimit-Remaining` | Requests left in the current minute |
+| `X-RateLimit-Reset` | Unix time, in seconds, when the current minute ends |
+
+The SDKs retry `429` for embedding, video detection and job polling within the
+client timeout; other calls return the error to your code. Poll job results no
+faster than the `Retry-After` value on a `202` response, and prefer
+[webhooks](/docs/api/webhooks) for long jobs. Enterprise plans have no rate
+limit; [contact us](/contact) if you need more capacity on another plan.
 
 ## Image limits
 

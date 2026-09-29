@@ -37,6 +37,35 @@ expire when that monthly allocation ends; annual payment does not make the entir
 year's credits available immediately. Your dashboard shows the next credit reset
 and subscription renewal separately.
 
+## GPU processing
+
+Business and Enterprise plans can run any operation on a GPU by adding
+`accelerator=gpu`. A GPU operation uses three times the normal credits. If no GPU
+is ready, it runs on CPU and is charged the normal credits. See
+[GPU processing](/docs/api/gpu).
+
+## API rate limits
+
+Each plan limits how many operations an organization can have in progress at once
+and how many API requests it can make per minute. Limits are shared by every key
+and member in the organization, including the dashboard.
+
+<ResponsiveTable>
+
+| Plan | Concurrent operations | API requests per minute |
+| --- | --- | --- |
+| Trial | 2 | 60 |
+| Launch | 2 | 120 |
+| Growth | 4 | 300 |
+| Scale | 8 | 600 |
+| Business | 16 | 1,000 |
+| Enterprise | Unlimited | Unlimited |
+
+</ResponsiveTable>
+
+See [rate limits](/docs/api/errors#rate-limits) for what counts toward each limit
+and how to handle a `429` response.
+
 Format access applies to embedding and detection, through both the dashboard and
 the synchronous and asynchronous APIs. [Image](/docs/api/embed),
 [PDF](/docs/api/documents) and [video](/docs/api/videos) limits still apply.

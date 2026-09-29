@@ -80,6 +80,12 @@
           "description": "Receive and verify signed events when a job finishes."
         },
         {
+          "slug": "api/gpu",
+          "file": "api/gpu.mdx",
+          "title": "GPU processing",
+          "description": "Run watermarking and detection on a GPU with accelerator=gpu on Business and Enterprise plans."
+        },
+        {
           "slug": "api/embed",
           "file": "api/embed.mdx",
           "title": "Embed an image",
