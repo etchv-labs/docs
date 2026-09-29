@@ -54,14 +54,19 @@ and member in the organization, including the dashboard.
 
 | Plan | Concurrent operations | API requests per minute |
 | --- | --- | --- |
-| Trial | 2 | 60 |
-| Launch | 2 | 120 |
-| Growth | 4 | 300 |
-| Scale | 8 | 600 |
+| Trial | One at a time | 20 |
+| Launch | One at a time | 20 |
+| Growth | 2 | 100 |
+| Scale | 5 | 300 |
 | Business | 16 | 1,000 |
 | Enterprise | Unlimited | Unlimited |
 
 </ResponsiveTable>
+
+On Trial and Launch, calls run one at a time: start the next embedding or video
+detection when the previous one finishes. Starting another while one is in progress
+returns `429` with a link to [upgrade](https://etchv.com/dashboard/billing) to a plan
+that runs operations in parallel.
 
 See [rate limits](/docs/api/errors#rate-limits) for what counts toward each limit
 and how to handle a `429` response.

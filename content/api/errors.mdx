@@ -31,8 +31,22 @@ the dashboard. See [limits by plan](/docs/billing#api-rate-limits).
 
 A request over either limit returns `429` without reserving credits. Its JSON
 `detail` includes a `code` of `rate_limited` or `concurrency_limited` and the
-`limit`, and the `Retry-After` header gives the seconds to wait. Responses for
-plans with a rate limit also carry:
+`limit`, and the `Retry-After` header gives the seconds to wait. A
+`concurrency_limited` response also includes `upgrade_url`, where you can move to a
+plan that runs more operations at once; its `message` says so too.
+
+```json
+{
+  "detail": {
+    "message": "Your plan runs one operation at a time and one is already in progress. Wait for it to finish, or upgrade to run more operations in parallel (Business runs 16 at once): https://etchv.com/dashboard/billing",
+    "code": "concurrency_limited",
+    "limit": 1,
+    "upgrade_url": "https://etchv.com/dashboard/billing"
+  }
+}
+```
+
+Responses for plans with a rate limit also carry:
 
 | Header | Meaning |
 | --- | --- |
@@ -42,7 +56,8 @@ plans with a rate limit also carry:
 
 The SDKs retry `429` for embedding, video detection and job polling within the
 client timeout; other calls return the error to your code. Poll job results no
-faster than the `Retry-After` value on a `202` response, and prefer
+faster than the `Retry-After` value on a `202` response (6 seconds on Trial and
+Launch, 2 seconds on other plans), and prefer
 [webhooks](/docs/api/webhooks) for long jobs. Enterprise plans have no rate
 limit; [contact us](/contact) if you need more capacity on another plan.
 
