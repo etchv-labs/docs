@@ -12,6 +12,8 @@ Both embedding modes use the same durable queue, credit reservation, processing 
 
 Etchv validates uploads and saves them in its own private storage before accepting them. A malformed file, invalid endpoint ID, or insufficient credits produces an error instead of a job receipt. Validation itself can take time for complex files.
 
+Large files also take longer to upload and, once processed, to download. That transfer time depends on your connection and adds to the latency you observe. At the 20 MB limit, a PDF or video can take a minute or more to process.
+
 ## Choose an endpoint
 
 Append `/async` to the standard endpoint to submit a background job. Upload
