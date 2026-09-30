@@ -45,9 +45,56 @@ A GPU operation uses three times the normal credits. Etchv reserves that amount
 when it accepts the request.
 
 If no GPU is ready, the operation runs on CPU instead and is charged the normal
-credits; the rest of the reservation is released. Etchv adds GPU capacity as GPU
-requests arrive, so the first request after a quiet period may run on CPU. Failed
-operations release all reserved credits, as usual.
+credits; the rest of the reservation is released. Failed operations release all
+reserved credits, as usual.
+
+## GPU readiness
+
+To save energy, Etchv runs GPUs only when someone needs them. While any
+Business or Enterprise workspace is active, at least one GPU stays running, so
+GPU requests normally start right away. Etchv adds more GPU capacity as GPU
+requests arrive; a GPU that has to start from scratch takes a few minutes, and
+requests that arrive before it is ready run on CPU.
+
+### Check readiness
+
+```sh
+curl --fail-with-body "https://api.etchv.com/accelerators/gpu" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+```json
+{ "accelerator": "gpu", "status": "ready", "warm_until": null, "ready_at": null }
+```
+
+| `status` | Meaning |
+| --- | --- |
+| `ready` | A GPU is running. GPU requests run on it |
+| `starting` | A GPU is starting. GPU requests run on CPU until it is ready |
+| `idle` | No GPU is running. Start one before sending GPU work |
+| `unavailable` | GPU processing is not available right now |
+
+Checking never starts a GPU. It needs an API key with `watermarks:embed` or
+`watermarks:detect`.
+
+### Start the GPU
+
+```sh
+curl --fail-with-body -X POST "https://api.etchv.com/accelerators/gpu/wake" \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"webhook_id":"wh_0123456789abcdef0123456789abcdef"}'
+```
+
+The GPU stays on for 15 minutes after it is ready, and for as long as GPU work
+keeps arriving. Starting it again extends the window instead of starting another
+GPU. The response has the same fields as the check; `warm_until` is when your
+window ends.
+
+`webhook_id` is optional. That endpoint receives
+[`accelerator.ready`](/docs/api/webhooks#events) once the GPU is up, or at once
+if it already is. Without it, check readiness until `status` is `ready`.
+Starting the GPU uses no credits and needs a Business or Enterprise plan.
 
 ## See which accelerator ran
 
@@ -64,6 +111,8 @@ A completed job's `credits` shows what was charged.
 | Status | Reason |
 | --- | --- |
 | `403` | Your plan does not include GPU processing. Upgrade to Business or Enterprise |
+| `404` | `webhook_id` is not an enabled endpoint in your workspace |
+| `503` | GPU processing is not available right now. Requests run on CPU |
 | `409` | The idempotency key was already used with a different `accelerator` |
 | `422` | `accelerator` is not `cpu` or `gpu` |
 

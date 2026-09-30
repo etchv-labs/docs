@@ -27,6 +27,7 @@ Pass the endpoint ID as `?webhook_id=wh_…` when [submitting an async job](/doc
 | `watermark.embed.failed` | Processing ended without a verified output; credits released |
 | `watermark.detect.succeeded` | Detection completed; fetch the JSON result to learn whether a watermark was found |
 | `watermark.detect.failed` | Detection could not complete; credits released |
+| `accelerator.ready` | The GPU you [started](/docs/api/gpu#start-the-gpu) is ready. `data` has the wake-up `id`, `accelerator`, `status`, `ready_at` and `warm_until` |
 
 A failed individual processing attempt does not emit a failure event while Etchv is still retrying. The terminal job update, credit settlement, and event creation commit together.
 
