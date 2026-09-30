@@ -142,7 +142,7 @@ an already verified destination in their own organization.
 | GET | `/storage/destinations/{id}/deliveries` | List 50 deliveries; pass returned `next_cursor` as `after`. |
 | POST | `/storage/destinations/{id}/deliveries` | Move an Etchv-hosted watermarked result with `{"asset_id":"ast_…","key":"optional/file.png"}`. |
 | GET | `/storage/deliveries/{id}` | Read delivery status. |
-| POST | `/storage/deliveries/{id}/retry` | Retry a failed/cancelled upload without another charge. |
+| POST | `/storage/deliveries/{id}/retry` | Retry a `failed` or `cancelled` upload without another charge. |
 | GET | `/storage/deliveries/{id}/content` | Authenticated download of a stored object. |
 
 Creating a connection returns its configuration, never credentials. Destination

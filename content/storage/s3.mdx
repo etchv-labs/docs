@@ -58,7 +58,7 @@ wildcard. [AWS explains external IDs and third-party access](https://docs.aws.am
 
 Click **Test connection**, or `POST /storage/destinations/{id}/verify`. This writes
 and reads a small probe under the prefix. Fix trust/permissions if it fails, then
-submit `storage_destination_id` with your [watermark request](/docs/storage).
+submit `storage_destination_id` with your [watermark request](/docs/storage#select-storage-on-a-request).
 
 Both private and already-public buckets work. For private buckets, leave S3 Block
 Public Access enabled. For an already-public bucket, set `visibility` to `public`

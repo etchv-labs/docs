@@ -59,7 +59,7 @@ and member in the organization, including the dashboard.
 | Growth | 2 | 100 |
 | Scale | 5 | 300 |
 | Business | 16 | 1,000 |
-| Enterprise | Unlimited | Unlimited |
+| Enterprise | Custom | Custom |
 
 </ResponsiveTable>
 
@@ -84,7 +84,7 @@ A format outside your plan returns `403` before credits are reserved.
   credits.
 - Embedding and detection are separate operations. Detection costs credits even
   when no watermark is found.
-- Failed operations release reserved credits. Automatic job retries do not create
+- Failed operations refund reserved credits. Automatic job retries do not create
   additional charges. Use the same idempotency key when recovering a request.
 - Viewing assets and downloading saved results do not use credits.
 

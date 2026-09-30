@@ -48,7 +48,7 @@ A GPU operation uses three times the normal credits. Etchv reserves that amount
 when it accepts the request.
 
 If no GPU is ready, the operation runs on CPU instead and is charged the normal
-credits; the rest of the reservation is released. Failed operations release all
+credits; the rest of the reservation is released. Failed operations refund all
 reserved credits, as usual.
 
 ## GPU readiness

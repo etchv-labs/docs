@@ -61,10 +61,9 @@ Automation connectors can check a key with `GET /auth/api-key`. Send the same
 no particular media scope and consumes no credits. It does not authorize an
 operation the key lacks permission to perform.
 
-Account and organization management use signed-in account sessions. An image API
-key is not a replacement for a user session on management endpoints.
+Account and organization management use signed-in account sessions. An API key
+is not a replacement for a user session on management endpoints.
 
-Existing keys keep their scopes. Create a replacement key to add asset permissions.
 Asset operations do not consume watermarking credits. See the [asset API](/docs/api/assets).
 
 Submitting a job with a webhook or a verified storage destination uses the job’s

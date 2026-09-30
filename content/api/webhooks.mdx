@@ -24,9 +24,9 @@ Pass the endpoint ID as `?webhook_id=wh_…` when [submitting an async job](/doc
 | Event | Meaning |
 | --- | --- |
 | `watermark.embed.succeeded` | Verified output is ready to download |
-| `watermark.embed.failed` | Processing ended without a verified output; credits released |
+| `watermark.embed.failed` | Processing ended without a verified output; credits refunded |
 | `watermark.detect.succeeded` | Detection completed; fetch the JSON result to learn whether a watermark was found |
-| `watermark.detect.failed` | Detection could not complete; credits released |
+| `watermark.detect.failed` | Detection could not complete; credits refunded |
 | `accelerator.ready` | The GPU you [started](/docs/api/gpu#start-the-gpu) is ready. `data` has the wake-up `id`, `accelerator`, `status`, `ready_at` and `warm_until` |
 
 A failed individual processing attempt does not emit a failure event while Etchv is still retrying. The terminal job update, credit settlement, and event creation commit together.
@@ -109,9 +109,9 @@ The dashboard shows delivery state, attempts, response status, event payload, an
 | List deliveries | `GET /webhooks/{id}/deliveries` |
 | Redeliver | `POST /webhooks/{id}/deliveries/{event_id}/redeliver` |
 
-Delivery listing returns `data` and `next_cursor`; pass the cursor as `after` for the next page. Delivery records and payloads expire after 30 days. The last 30 attempts are retained per event. A delivered, exhausted, or cancelled event can be manually redelivered up to ten times while its record remains available. The endpoint must be enabled. A pending event cannot be redelivered concurrently.
+Delivery listing returns `data` and `next_cursor`; pass the cursor as `after` for the next page. Delivery records and payloads expire after 30 days. The last 30 attempts are retained per event. A `delivered`, `exhausted` or `cancelled` event can be manually redelivered up to ten times while its record remains available. The endpoint must be enabled. A pending event cannot be redelivered concurrently.
 
-Disabling or deleting an endpoint cancels its deliveries when the dispatcher next picks them up. An already in-flight delivery may still arrive. Re-enabling does not automatically requeue cancelled events; redeliver them explicitly. Deleting an endpoint is permanent; use disable if you may need it again.
+Disabling or deleting an endpoint cancels its deliveries when the dispatcher next picks them up. An already in-flight delivery may still arrive. Re-enabling does not automatically requeue `cancelled` events; redeliver them explicitly. Deleting an endpoint is permanent; use disable if you may need it again.
 
 ## Customer storage delivery events
 

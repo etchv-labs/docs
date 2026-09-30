@@ -64,7 +64,7 @@ can affect recovery; arbitrary transformations are not guaranteed.
 ## Billing and results
 
 One successful embed uses one credit per PDF, regardless of page count. A separate
-successful detection uses one credit. Failed embed jobs release their reservation.
+successful detection uses one credit. Failed embed jobs refund their reservation.
 Saved results remain available for 24 hours. Retries start from the original PDF;
 replaying the same idempotency key returns the saved bytes without another charge.
 

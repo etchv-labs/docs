@@ -127,7 +127,7 @@ Choose and persist an `Idempotency-Key` before sending a request. After a timeou
 
 Async replays always return a `202` receipt, even when the existing job has finished. Check its `status`; a receipt does not imply a new job. A replay does not emit another webhook. Use the delivery redelivery control if needed.
 
-Failed processing releases reserved credits. Webhook delivery attempts and redeliveries do not consume credits. Processing has a 30-minute deadline and at most five attempts; durability does not mean an unsupported or unverifiable file will eventually succeed.
+Failed processing refunds reserved credits. Webhook delivery attempts and redeliveries do not consume credits. Processing has a 30-minute deadline and at most five attempts; durability does not mean an unsupported or unverifiable file will eventually succeed.
 
 ## Try either mode in the dashboard
 

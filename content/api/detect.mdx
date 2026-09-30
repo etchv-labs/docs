@@ -38,6 +38,7 @@ A successful request returns `200` with a JSON body and an `X-Request-ID` header
 | `watermarked` | Boolean | Whether all frames/pages/composites recovered the same watermark |
 | `confidence` | Number | Lowest per-unit decoded-bit certainty, between 0 and 1 |
 | `watermark_id` | String or null | Recovered 64-character hexadecimal ID, or null when no watermark is detected |
+| `units` | Array of objects | `index`, `watermarked`, `confidence`, `watermark_id` |
 
 ## Interpret the result
 

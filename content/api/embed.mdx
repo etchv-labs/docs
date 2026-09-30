@@ -78,11 +78,11 @@ Workers retry transient failures and verification failures up to five attempts,
 with backoff, using the original image and the same identifier each time. A worker
 crash is recovered after its lease expires. Work continues after a client disconnect.
 Jobs have a 30-minute processing deadline; when workers recover after an outage,
-they finalize expired jobs as failed and release their reservations.
+they finalize expired jobs as failed and refund their reservations.
 
 Only a native output whose every frame/page (or layered composite) recovers the expected identifier
 is marked successful. The saved result and its one-credit charge are committed
-together after upload. Terminal failures release the reservation. Retrieving a
+together after upload. Terminal failures refund the reservation. Retrieving a
 successful result never consumes another credit.
 
 ## Retention

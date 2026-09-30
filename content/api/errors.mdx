@@ -58,8 +58,8 @@ The SDKs retry `429` for embedding, video detection and job polling within the
 client timeout; other calls return the error to your code. Poll job results no
 faster than the `Retry-After` value on a `202` response (6 seconds on Trial and
 Launch, 2 seconds on other plans), and prefer
-[webhooks](/docs/api/webhooks) for long jobs. Enterprise plans have no rate
-limit; [contact us](/contact) if you need more capacity on another plan.
+[webhooks](/docs/api/webhooks) for long jobs. Enterprise rate limits are set by
+agreement; [contact us](/contact) if you need more capacity on another plan.
 
 ## Image limits
 
@@ -90,7 +90,7 @@ See [PDF limits](/docs/api/documents#supported-files) and
 
 Image and PDF operations each use one credit per file; video uses one credit per
 started minute. Embedding reserves credits when its durable job is accepted,
-charges once the verified result is saved, and releases the reservation on failure. Retries and result downloads do
+charges once the verified result is saved, and refunds the reservation on failure. Retries and result downloads do
 not consume additional credits. During an outage, reservations remain until a worker
 can complete or finalize the job.
 

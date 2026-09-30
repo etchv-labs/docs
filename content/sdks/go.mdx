@@ -160,7 +160,7 @@ delivery, err := client.GetStorageDelivery(ctx, *job.StorageDeliveryID)
 
 Wait for the watermark job to succeed before reading its delivery record;
 it returns `404` until then. With `storage:read`, poll delivery status until
-`stored` or a terminal failure; `RetryStorageDelivery` retries a failed or cancelled
+`stored` or a terminal failure; `RetryStorageDelivery` retries a `failed` or `cancelled`
 upload without additional credits, and `DownloadStorageDelivery` fetches a stored object.
 With `storage:write`, manage destinations with `CreateStorageDestination`,
 `VerifyStorageDestination`, `UpdateStorageDestination`, and `DeleteStorageDestination`,

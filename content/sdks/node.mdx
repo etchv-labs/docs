@@ -1,4 +1,4 @@
-Requires Node.js 24.x. Works with ES modules and CommonJS, includes TypeScript
+Requires Node.js 22.12 or later. Works with ES modules and CommonJS, includes TypeScript
 declarations and has no runtime dependencies. MIT licensed.
 
 ## Install
@@ -190,7 +190,7 @@ if (job.storage_delivery_id) {
 
 Wait for the watermark job to succeed before reading its delivery record;
 it returns `404` until then. With `storage:read`, poll delivery status until
-`stored` or a terminal failure; `retryStorageDelivery` retries a failed or cancelled
+`stored` or a terminal failure; `retryStorageDelivery` retries a `failed` or `cancelled`
 upload without additional credits. With `storage:write`, manage destinations with
 `createStorageDestination`, `verifyStorageDestination`, `updateStorageDestination`,
 and `deleteStorageDestination`, and move an existing asset with `createStorageDelivery`.

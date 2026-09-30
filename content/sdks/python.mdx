@@ -176,7 +176,7 @@ if delivery["status"] == "stored":
 
 Wait for the watermark job to succeed before reading its delivery record;
 it returns `404` until then. With `storage:read`, poll delivery status until
-`stored` or a terminal failure; `retry_storage_delivery` retries a failed or cancelled
+`stored` or a terminal failure; `retry_storage_delivery` retries a `failed` or `cancelled`
 upload without additional credits. With `storage:write`, manage destinations with
 `create_storage_destination`, `verify_storage_destination`, `update_storage_destination`,
 and `delete_storage_destination`, and move an existing asset with `create_storage_delivery`.
