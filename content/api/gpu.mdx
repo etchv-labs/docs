@@ -1,7 +1,10 @@
 Business and Enterprise plans can run any watermarking or detection operation on
-a GPU by adding `accelerator=gpu` to the request. GPU processing is fastest for
-PDFs and video. Results are the same as on CPU: the same native format, identifier
-and verification.
+a GPU by adding `accelerator=gpu` to the request. In our
+[benchmarks](https://benchmarks.etchv.com/performance), GPU watermarking is about
+twice as fast for typical images and video. PDFs gain less, detection little, and
+files near the size limits little, because decoding and encoding still run on CPU.
+Results are the same as on CPU: the same native format, identifier and
+verification.
 
 ## Request GPU processing
 

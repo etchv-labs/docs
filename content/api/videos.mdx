@@ -26,7 +26,8 @@ On Business and Enterprise plans, add `accelerator=gpu` for
 - At most 120 seconds, 240 frames, 1 million pixels per frame and 40 million
   decoded pixels total. Dimensions must be even. All limits apply together.
 - Up to 20 MB input and 100 MB watermarked output (lossless re-encoding can be
-  larger than the source); detection and the dashboard accept up to 20 MB.
+  larger than the source). Detection accepts up to 95 MB; the dashboard
+  watermarks videos up to 20 MB.
 - No audio, or one synchronized mono/stereo AAC-LC track. Audio packets and timing
   are copied and verified; audio itself is not watermarked.
 - HDR, variable frame rates, fragmented MP4, additional tracks, subtitles,

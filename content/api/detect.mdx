@@ -21,7 +21,7 @@ Authenticate with `X-API-Key` and submit a multipart upload.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `file` | Image file | Yes | An encoded image, at most 50 MB and 40 megapixels |
+| `file` | Image file | Yes | An encoded image, at most 95 MB and 40 megapixels. Delivered files may exceed the 50 MB upload limit |
 
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
