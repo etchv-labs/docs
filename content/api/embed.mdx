@@ -69,8 +69,9 @@ Reusing the same key and input resumes that job or returns its saved image, with
 same request ID and no second charge. Changed input with the same key returns `409`.
 
 The HTTP request waits up to 20 seconds for completion. If still running, it returns
-`202`, `Retry-After: 2`, and JSON containing `request_id`, `status_url`, and `result_url`.
-Use the same API key to GET `result_url` until it returns `200` image bytes or a terminal error.
+`202` with a `Retry-After` header and JSON containing `request_id`, `status_url`, and `result_url`.
+Use the same API key to GET `result_url` at that interval (6 seconds on Trial and Launch,
+2 seconds on other plans) until it returns `200` with the watermarked image or a terminal error.
 GET `status_url` returns job metadata. Jobs are scoped to your organization.
 
 Workers retry transient failures and verification failures up to five attempts,

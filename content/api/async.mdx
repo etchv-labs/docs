@@ -103,7 +103,7 @@ curl 'https://api.etchv.com/watermarks/documents/async' \
 
 ## Retrieve a pending result (either mode)
 
-Poll `status_url` every two seconds until `status` is `succeeded` or `failed`. Intermediate states are `queued`, `running`, and `retrying`. Download `result_url` after success: embedding returns the original media format; detection returns JSON with per-frame or per-page results. A successful detection job can legitimately report `watermarked: false`.
+Poll `status_url` at the interval in the `Retry-After` header (6 seconds on Trial and Launch, 2 seconds on other plans) until `status` is `succeeded` or `failed`. Intermediate states are `queued`, `running`, and `retrying`. Download `result_url` after success: embedding returns the original media format; detection returns JSON with per-frame or per-page results. A successful detection job can legitimately report `watermarked: false`.
 
 Job results remain available for 24 hours. Embedded source and output assets also appear in the [asset library](/docs/api/assets), with records retained until deleted. Etchv storage has 30-day downloads by default; selected customer buckets control result retention. Async detection does not create library assets. Download promptly; retrying a webhook does not extend file availability.
 

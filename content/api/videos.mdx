@@ -51,7 +51,8 @@ fields. Authenticate with an API key scoped for `watermarks:embed` or
 operation after a disconnected request.
 
 Both operations wait briefly, then return `202` if work is still running. Follow
-the result URL with the same API key:
+the result URL with the same API key, at the interval in `Retry-After` (6 seconds
+on Trial and Launch, 2 seconds on other plans):
 
 - Embedding: `/watermarks/jobs/{request_id}/result`
 - Detection: `/watermarks/detection-jobs/{request_id}/result`

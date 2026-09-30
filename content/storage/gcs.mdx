@@ -2,7 +2,7 @@ Use Workload Identity Federation for keyless access, or connect with a service
 account JSON key. Your bucket controls retention after delivery; the
 [storage guide](/docs/storage) explains how files and asset records are managed.
 
-## 1. Grant access to your bucket
+## Grant access to your bucket
 
 Create a dedicated service account and a custom role containing only:
 
@@ -13,7 +13,7 @@ Grant that role on the destination bucket. For a shared bucket, restrict the
 binding to the chosen object prefix, including Etchv's connection probe.
 [Google documents Cloud Storage permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions).
 
-## 2. Connect without a private key (recommended)
+## Connect without a private key (recommended)
 
 Workload Identity Federation lets Etchv exchange its AWS identity for short-lived
 Google tokens. Your organization can keep its policy blocking service account
@@ -46,7 +46,7 @@ Use the **project number**, not its name, in the provider resource. The response
 and dashboard details show `aws_principal_arn` and `gcs_subject`. The subject is
 unique to your Etchv organization and remains stable across its destinations.
 
-## 3. Trust the exact Etchv identity
+## Trust the exact Etchv identity
 
 Configure the AWS provider to accept only the AWS account and role shown in the
 destination details. For a returned role ARN of
@@ -75,7 +75,7 @@ Etchv writes and reads a small probe. IAM changes may take a few minutes to
 propagate; retry the check after propagation. A failure leaves the destination
 unverified and unavailable for new watermark requests.
 
-## 4. Store outputs
+## Store outputs
 
 Pass the destination ID to any [embedding endpoint](/docs/storage), or select it
 in the dashboard. Existing SDK storage destination options work with keyless

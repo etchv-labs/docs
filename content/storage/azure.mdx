@@ -5,7 +5,7 @@ before delivery, preserves the result’s file format and MIME type, and retries
 storage failures without another watermark operation or credit charge. See the
 [storage guide](/docs/storage) for delivery status and retention.
 
-## 1. Create a container SAS
+## Create a container SAS
 
 Use a dedicated container in a standard Azure public-cloud storage account.
 Generate a SAS with:
@@ -20,7 +20,7 @@ delegation key. You will need to rotate expiring tokens. Do not supply an accoun
 key, connection string, account-wide SAS, URL, or private endpoint.
 [Microsoft documents SAS types and scope](https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview).
 
-## 2. Connect and verify
+## Connect and verify
 
 In [Dashboard storage](/dashboard/storage), choose **Azure Blob Storage**, then
 enter the account name, container name, prefix and token. Supply only the query
@@ -43,7 +43,7 @@ Then click **Test connection**, or `POST /storage/destinations/{id}/verify`. The
 probe checks both write and read access. Tokens are encrypted and never returned
 in API responses or download URLs.
 
-## 3. Store and retrieve
+## Store and retrieve
 
 Pass the destination ID to an [embedding request](/docs/storage). Etchv uploads a
 block blob while preserving the original bytes and MIME type. Existing different

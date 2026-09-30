@@ -3,7 +3,7 @@ cross-account IAM role. Etchv uses temporary role credentials; you do not upload
 an AWS access key. See the
 [storage guide](/docs/storage) for delivery status and retention.
 
-## 1. Create a limited role
+## Create a limited role
 
 Create a role whose name starts with `etchv-storage-`, for example
 `etchv-storage-production`. Limit its permissions to your chosen bucket prefix:
@@ -24,7 +24,7 @@ permission to change ACLs. If the bucket’s default encryption uses a customer 
 key, grant the role the required `kms:GenerateDataKey` and `kms:Decrypt` permissions
 and allow it in that key’s policy. Etchv honors bucket default encryption.
 
-## 2. Add the destination
+## Add the destination
 
 Use [Dashboard storage](/dashboard/storage), or create it with an admin API key:
 
@@ -54,7 +54,7 @@ The response returns a destination `id`, Etchv’s `aws_principal_arn`, and a un
 The external ID must be unique to this connection. Do not omit it or use a
 wildcard. [AWS explains external IDs and third-party access](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
 
-## 3. Test and use
+## Test and use
 
 Click **Test connection**, or `POST /storage/destinations/{id}/verify`. This writes
 and reads a small probe under the prefix. Fix trust/permissions if it fails, then
