@@ -52,10 +52,18 @@ claude mcp add etchv --env ETCHV_API_KEY=YOUR_ETCHV_API_KEY \
   --env ETCHV_FILES_ROOT=/absolute/path/media -- npx -y @etchv-labs/mcp-server@1
 ```
 
+In OpenAI Codex, run:
+
+```sh
+codex mcp add etchv --env ETCHV_API_KEY=YOUR_ETCHV_API_KEY \
+  --env ETCHV_FILES_ROOT=/absolute/path/media -- npx -y @etchv-labs/mcp-server@1
+```
+
 Create the media directory first, then restart your MCP client. If it uses a
 different configuration format, supply the same command, arguments and environment
-variables. There is no hosted MCP URL to configure. Ask the assistant to run
-`check_api_key` to confirm the connection; it spends no credits.
+variables. There is no hosted MCP URL to configure, so ChatGPT, which connects only
+to hosted MCP servers, cannot launch it. Ask the assistant to run `check_api_key`
+to confirm the connection; it spends no credits.
 
 ## Your first watermark
 
