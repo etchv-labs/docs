@@ -1,4 +1,4 @@
-Watermark and asset API requests use an Etchv API key in the `X-API-Key` header.
+Send your API key in the `X-API-Key` header. Keep it in your server’s secret manager.
 
 ```sh
 curl https://api.etchv.com/watermarks/images/detect \
@@ -8,64 +8,62 @@ curl https://api.etchv.com/watermarks/images/detect \
 
 ## Create a key
 
-Sign in to the [dashboard](/dashboard/api-keys), select your organization, and
-create a key with the scopes your integration needs. Copy the key when it is
-created and store it in your server's secret manager. You can also download its
-details as a CSV on the confirmation screen; the full secret is unavailable after
-you dismiss it.
+1. Open [API keys](/dashboard/api-keys) and select your organization.
+2. Choose only the permissions your integration needs.
+3. Copy the secret or download its CSV before closing the confirmation screen. It is shown once.
 
-| Scope | Allowed operation |
+| Scope | Permission |
 | --- | --- |
-| `watermarks:embed` | Embed in an image, PDF or video |
-| `watermarks:detect` | Detect in an image, PDF or video |
+| `watermarks:embed` | Watermark images, PDFs and video |
+| `watermarks:detect` | Detect watermarks in supported media |
 | `assets:read` | List, inspect and download assets |
 | `assets:write` | Rename assets and replace metadata |
-| `assets:delete` | Delete assets; also requires current owner or admin membership |
+| `assets:delete` | Delete assets; owner/admin membership also required |
 | `webhooks:read` | Inspect endpoints and deliveries |
-| `webhooks:write` | Manage endpoints and redeliver events; owner or admin only |
-| `storage:read` | Read destinations, inspect deliveries, and download exports |
-| `storage:write` | Manage and verify connections, move results, and retry delivery; owner or admin only |
+| `webhooks:write` | Manage endpoints and redeliver events; owner/admin only |
+| `storage:read` | Inspect destinations, deliveries and downloads |
+| `storage:write` | Manage/verify connections, move results and retry delivery; owner/admin only |
 
-Keys belong to an organization and are subject to membership, expiration,
-revocation, and billing checks. An authenticated key alone does not guarantee
-that credits are available.
+Keys are organization-scoped. Every request checks membership, expiry, revocation
+and permissions; processing also requires plan access and available credits.
 
 ## Use keys in the dashboard
 
-The watermarking and detection forms select an active key for your organization.
-Use the API key dropdown to choose another; keys without the required permission
-are disabled. Your choice is remembered for the current browser session.
-Members can select their own keys; owners and admins can select organization keys.
+The media forms choose an active organization key. Use the dropdown to change it;
+keys missing the required scope are disabled. Members can select their own keys;
+owners/admins can select organization keys. The choice lasts for the browser session.
 
-Your signed-in session authorizes the selected key, so you do not need to paste
-its secret into a form. The API checks scopes, expiry, revocation, and membership
-on every request. Use Manage keys if you need to create a key.
-
-The API request panel includes copyable examples for your selected media, request
-mode, and storage destination. Set credentials on your server before running them.
+Your signed-in session authorizes the selection—no secret needs to be pasted.
+Copyable API examples reflect the selected media, request mode and storage.
 
 ## Keep credentials on your server
 
-Do not embed keys in frontend JavaScript, mobile application bundles, public
-repositories, or image URLs. Your backend should call Etchv on behalf of users.
-Revoke a key immediately if it is exposed, then create a replacement.
+Do not put keys in frontend code, mobile bundles, public repositories or URLs.
+Revoke exposed keys and create replacements.
 
 ## Authentication errors
 
-A missing or invalid key returns `401`. A key without the required scope returns
-`403`. Unavailable credits or billing can return `402`.
+| Status | Check |
+| --- | --- |
+| `401` | Missing, invalid, expired or revoked key |
+| `403` | Scopes, membership or plan access |
+| `402` | Billing and available credits |
 
-Automation connectors can check a key with `GET /auth/api-key`. Send the same
-`X-API-Key` header; the response contains `organization_id`, `key_id`, and
-`scopes`, with `Cache-Control: no-store`. This check requires an active key but
-no particular media scope and consumes no credits. It does not authorize an
-operation the key lacks permission to perform.
+<Details title="Check a key without spending credits">
 
-Account and organization management use signed-in account sessions. An API key
-is not a replacement for a user session on management endpoints.
+`GET /auth/api-key` accepts any active key via `X-API-Key`. It returns
+`organization_id`, `key_id` and `scopes`, with `Cache-Control: no-store`.
+It consumes no credits and grants no additional permissions.
 
-Asset operations do not consume watermarking credits. See the [asset API](/docs/api/assets).
+</Details>
 
-Submitting a job with a webhook or a verified storage destination uses the job’s
-existing embed or detect scope. See [webhooks](/docs/api/webhooks) and
-[storage setup](/docs/storage) for management details.
+<Details title="Job permissions and management access">
+
+Selecting an existing webhook or verified storage destination uses the job’s
+embed/detect scope. Managing those resources requires the scopes above.
+Asset management uses no watermarking credits.
+
+Account and organization management require a signed-in session; API keys cannot
+replace it. [Webhooks](/docs/api/webhooks) · [Storage](/docs/storage).
+
+</Details>

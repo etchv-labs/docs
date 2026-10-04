@@ -1,4 +1,4 @@
-Use the [Etchv Java SDK](https://github.com/etchv-labs/java-sdk) with Java 21+. The only runtime dependency is Gson. MIT licensed.
+Java 21+. Gson is the only runtime dependency. Reuse one thread-safe client and close it when finished. MIT licensed.
 
 ## Install
 
@@ -20,9 +20,7 @@ implementation("com.etchv:etchv-sdk:1.0.0")
 
 ## Embed a file
 
-Set `ETCHV_API_KEY` to a server-side [API key](/docs/authentication) with the
-`watermarks:embed` scope and available credits. The following snippets use this
-configured client.
+Set `ETCHV_API_KEY` on your server. This example needs `watermarks:embed` and `watermarks:detect`, an active plan and available credits.
 
 ```java
 import com.etchv.EtchvClient;
@@ -43,24 +41,40 @@ class Example {
 }
 ```
 
-`getApiKeyInfo` confirms the key and returns its `organizationId`, `keyId` and `scopes`
-without using credits. `EtchvClient` is thread-safe; create one per application.
+`getApiKeyInfo` checks credentials for free. Write output bytes without re-encoding.
 
 ## Images, documents and video
 
-`embedImage` / `detectImage`, `embedDocument` / `detectDocument`, `embedVideo` / `detectVideo`. Write returned bytes directly using the result’s filename. Detection returns `watermarked`, `confidence`, a nullable `watermarkId`, `requestId`, and per-frame or per-page units.
+| Media | Embed / detect methods |
+| --- | --- |
+| [Images](/docs/api/embed) | `embedImage` / `detectImage` |
+| [PDFs](/docs/api/documents) | `embedDocument` / `detectDocument` |
+| [Videos](/docs/api/videos) | `embedVideo` / `detectVideo` |
 
-See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos).
+Native output is in `result.bytes()` for every media type. Embedding also returns `watermarkId()`, `requestId()`, `contentType()`, `filename()`, `assetId()`, `sourceAssetId()` and `storageDeliveryId()`.
+
+Detection returns the ID, confidence and per-frame/page results—not the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
+
+<Details title="Client configuration">
+
+`EtchvClient(key, baseUrl, Duration)` sets the timeout (default 120 seconds). Calls block and propagate `InterruptedException` on thread interruption. Use `new EtchvClient.Options(filename, idempotencyKey)` for media requests. Run later recipes inside the open client’s scope.
+
+</Details>
 
 ## Retries and recovery
 
-Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `getEmbedResult(requestId)` / `getDetectionResult(requestId)`.
+Embedding and video detection retry and poll automatically; image/PDF detection does not. Save an idempotency key before uploading to recover across restarts.
 
-`EtchvClient(key, baseUrl, Duration)` sets the deadline. Calls are synchronous and propagate `InterruptedException` on thread interruption. Close the client when finished.
+| Situation | Action |
+| --- | --- |
+| Client timeout | The accepted job continues; resume or resend identical inputs with the same key |
+| Resume a job | `getEmbedResult(requestId)` / `getDetectionResult(requestId)` |
+| Changed inputs | Use a new key; reusing one returns `409` |
+| Collect a saved result | Within 24 hours; see [retention](/docs/api/assets#files-and-records) |
 
-API and transport failures throw the unchecked `EtchvClient.EtchvException` with `statusCode()`
-(`0` when no response was received), `requestId()` (quote it to support), `idempotencyKey()`,
-and `detail()`; `isGone()` identifies an expired or deleted result (410):
+<Details title="Error types and handling">
+
+Unchecked `EtchvClient.EtchvException` exposes `statusCode()`, `requestId()`, `idempotencyKey()` and `detail()`. Status `0` means no response was received; `isGone()` identifies HTTP 410.
 
 ```java
 try {
@@ -73,13 +87,15 @@ try {
 }
 ```
 
-Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.
+See [HTTP errors](/docs/api/errors) and [retry behavior](/docs/api/async#retry-safely). Save the request ID when reporting failures.
+
+</Details>
 
 ## Asset library
 
-Embedding returns IDs for the original and watermarked assets. Use `assets:read`
-to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
-membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+Scopes: `assets:read` for downloads, `assets:write` for edits, `assets:delete` plus owner/admin for deletion. No credits used.
+
+<Details title="List, edit and download assets">
 
 ```java
 var page = client.listAssets(Map.of("kind", "watermarked", "limit", "25"));
@@ -94,16 +110,19 @@ for (var item : page.items()) {
 // Use nextCursor() with the same filters to continue listing.
 ```
 
-Edits replace metadata and require the current version. Reload and reconcile on
-`409`. Asset operations use no credits and never change the embedded watermark.
-`deleteAsset` removes one asset and `deleteAssets` removes up to 50 atomically.
-See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+Edits replace metadata and require the current version; reconcile `409` conflicts. `deleteAsset` / `deleteAssets` delete one asset or 1–50 atomically. [Asset fields, filters and retention](/docs/api/assets).
+
+</Details>
 
 ## Async jobs and webhooks
 
-Regular embed/detect methods wait for a result. Submission methods return a JSON job
-receipt without polling. Choose `images`, `documents`, or `videos`; the example
-below assumes you have loaded a PDF into memory.
+Submit for a receipt without waiting: `submitEmbed` / `submitDetection`; media: `images`, `documents`, `videos`. Submission returns a JSON receipt.
+
+`getJob(requestId, false)` for embedding; `getJob(requestId, true)` for detection.
+
+<Details title="Submit and collect an async job">
+
+Load the media bytes before submitting.
 
 ```java
 var job = client.submitEmbed("documents", pdfBytes, Map.of("delivery", "delivery_001"),
@@ -113,38 +132,35 @@ var status = client.getJob(requestId, false);   // queued, running, retrying, su
 var result = client.getEmbedResult(requestId);  // waits while the job is pending
 ```
 
-Use `submitDetection` for detection without forensic data, `getJob(requestId, true)` for
-its status, and `getDetectionResult` for its result.
+The webhook is optional (Java/Rust: pass `null` / `None`). Save the receipt. [Job handling](/docs/api/async).
 
-Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
-submitting, or pass `null` to poll. Persist your idempotency key before uploading. After success, collect
-the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+</Details>
 
-With `webhooks:read` and `webhooks:write` (owner or admin), manage endpoints from the SDK:
-`createWebhook(url)` returns `signingSecret()` once, alongside `listWebhooks`, `updateWebhook`,
-`deleteWebhook`, `listWebhookDeliveries`, and `redeliverWebhook`. Verify each delivery
-against the raw request body before parsing it:
+<Details title="Manage endpoints and verify webhooks">
+
+Methods: `createWebhook`, `listWebhooks`, `updateWebhook`, `deleteWebhook`, `listWebhookDeliveries`, `redeliverWebhook`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the one-time signing secret.
 
 ```java
 boolean valid = EtchvClient.verifyWebhookSignature(rawBody,
     request.getHeader("X-Etchv-Timestamp"), request.getHeader("X-Etchv-Signature"), signingSecret);
+if (!valid) throw new SecurityException("Invalid webhook signature");
 // Then check the body id equals X-Etchv-Event-ID, deduplicate, enqueue work, and return 2xx.
 ```
 
-`verifyWebhookSignature` checks the HMAC-SHA256 signature in constant time and rejects
-timestamps more than five minutes from your clock.
+`verifyWebhookSignature` checks the signature and timestamp. Reject an invalid signature, then compare the body ID with `X-Etchv-Event-ID`. Use raw bytes and a 300-second tolerance. Deduplicate, enqueue, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
+
+</Details>
 
 ## GPU processing
 
-On Business and Enterprise plans, pass `options.withAccelerator(EtchvClient.Accelerator.GPU)` to any embed or detect
-call. GPU processing uses 3× credits; if no GPU is ready, the request runs on CPU
-at standard credits. `result.accelerator()` reports the hardware that ran. See
+Pass `options.withAccelerator(EtchvClient.Accelerator.GPU)` on Business or Enterprise. GPU uses 3× credits; CPU fallback uses normal credits. `result.accelerator()` reports the accelerator used. See
 [GPU processing](/docs/api/gpu).
 
 ## Choose where results are stored
 
-Etchv storage is included by default. To use your own bucket, [connect and verify
-a destination](/docs/storage), then pass its ID and an optional object key:
+[Connect your bucket](/docs/storage), then pass its destination ID and optional object key. Omit both for Etchv storage.
+
+<Details title="Deliver to your bucket">
 
 ```java
 var job = client.submitEmbed("documents", pdfBytes,
@@ -155,10 +171,8 @@ var job = client.submitEmbed("documents", pdfBytes,
 var delivery = client.getStorageDelivery(job.get("storage_delivery_id").getAsString());
 ```
 
-Wait for the watermark job to succeed before reading its delivery record;
-it returns `404` until then. With `storage:read`, poll delivery status until
-`stored` or a terminal failure; `retryStorageDelivery` retries a failed upload without
-additional credits. With `storage:write`, manage destinations with `createStorageDestination`,
-`verifyStorageDestination`, `updateStorageDestination`, and `deleteStorageDestination`;
-`createStorageDelivery` copies an existing asset and `downloadStorageDelivery` fetches a stored object.
-See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).
+After job success, inspect delivery with `storage:read` (earlier reads return `404`). Once `stored`, use `downloadStorageDelivery` to download.
+
+With `storage:write` and owner/admin access, `retryStorageDelivery` retries failed/cancelled delivery for free. Manage with: `createStorageDestination`, `verifyStorageDestination`, `updateStorageDestination`, `deleteStorageDestination`, `createStorageDelivery`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
+
+</Details>

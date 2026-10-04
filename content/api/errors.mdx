@@ -1,114 +1,76 @@
-Non-success responses normally contain JSON with a `detail` field. Save the
-HTTP status and any `X-Request-ID` header when investigating a failed request.
+Use the HTTP status and JSON `detail` to handle a failure. Save `X-Request-ID` when reporting an issue.
 
 ## Status codes
 
-| Status | Meaning | Next step |
-| --- | --- | --- |
-| `401` | Missing or invalid authentication | Check your API key |
-| `402` | Billing or credits unavailable | Check the organization's plan and credit balance |
-| `403` | Insufficient scope, membership, or plan access, including GPU processing below Business | Check [key permissions](/docs/authentication), [plan formats](/docs/billing) and [GPU processing](/docs/api/gpu) |
-| `404` | Asset not found or outside your organization | Check the asset ID and organization |
-| `409` | Conflicting input, duplicate operation or stale asset version | Inspect the operation, or reload the asset before editing |
-| `410` | Job result or asset file expired/deleted | Check the asset library; records for expired files remain readable until deleted |
-| `413` | File exceeds a size limit, or the request body exceeds 55 MB | Reduce the upload size or pixel dimensions |
-| `415` | Recognized but unsupported file format, such as HEIC, HEIF or AVIF | Convert the file to a supported format, such as JPEG, PNG or WebP |
-| `422` | Invalid input or failed watermark verification | Check image encoding and JSON data; try another source image if verification failed |
-| `429` | Rate or concurrency limit reached | Wait for the `Retry-After` seconds, then retry. See [rate limits](#rate-limits) |
-| `503` | A required service is unavailable | Check service status and handle the failure in your application |
+| Status | What to do |
+| --- | --- |
+| `401` · Authentication | Check the API key |
+| `402` · Billing | Check the plan, credit balance and pending reservations |
+| `403` · Access | Check [scopes](/docs/authentication), membership, [formats](/docs/billing) and [GPU eligibility](/docs/api/gpu) |
+| `404` · Not found | Check the ID and organization |
+| `409` · Conflict | Check idempotency inputs or reload a stale asset version |
+| `410` · Unavailable result | Check the asset library; the file may be expired or deleted |
+| `413` · Too large | Reduce file size, dimensions or frame count |
+| `415` · Unsupported format | Convert to a supported format |
+| `422` · Invalid input or verification failure | Check encoding and JSON; try a different source if verification failed |
+| `429` · Limit reached | Wait for `Retry-After` seconds, then retry |
+| `503` · Service unavailable | Check [service status](https://status.etchv.com) and retry appropriately |
 
 ## Rate limits
 
-Every plan has two limits, applied per organization across all of its API keys and
-the dashboard. See [limits by plan](/docs/billing#api-rate-limits).
+Limits apply across your organization’s keys and dashboard. See [allowances by plan](/docs/billing#api-rate-limits).
 
-- **Requests per minute** counts every authenticated API request, including job
-  status checks, result downloads, asset requests and requests that are refused.
-  The count resets at the start of each minute.
-- **Concurrent operations** counts embedding and asynchronous detection jobs that are
-  queued or running. Synchronous image and PDF detection count toward requests per
-  minute only. Replaying an existing idempotency key is never rejected.
+| Limit | What counts |
+| --- | --- |
+| Requests per minute | Every authenticated request, including polling, downloads and refused requests; resets each minute |
+| Concurrent operations | Queued or running embedding and async detection jobs, plus durable video detection |
 
-A request over either limit returns `429` without reserving credits. Its JSON
-`detail` includes a `code` of `rate_limited` or `concurrency_limited` and the
-`limit`, and the `Retry-After` header gives the seconds to wait. A
-`concurrency_limited` response also includes `upgrade_url`, where you can move to a
-plan that runs more operations at once; its `message` says so too.
+Synchronous image and PDF detection only count toward requests per minute. Replaying an existing job does not require another concurrent slot.
 
-```json
-{
-  "detail": {
-    "message": "Your plan runs one operation at a time and one is already in progress. Wait for it to finish, or upgrade to run more operations in parallel (Business runs 16 at once): https://etchv.com/dashboard/billing",
-    "code": "concurrency_limited",
-    "limit": 1,
-    "upgrade_url": "https://etchv.com/dashboard/billing"
-  }
-}
-```
-
-Responses for plans with a rate limit also carry:
+A `429` reserves no credits. Its `detail` includes `code` (`rate_limited` or `concurrency_limited`) and `limit`; concurrency errors also include `upgrade_url`.
 
 | Header | Meaning |
 | --- | --- |
-| `X-RateLimit-Limit` | Requests allowed in the current minute |
-| `X-RateLimit-Remaining` | Requests left in the current minute |
-| `X-RateLimit-Reset` | Unix time, in seconds, when the current minute ends |
+| `Retry-After` | Seconds to wait |
+| `X-RateLimit-Limit` | Requests allowed this minute |
+| `X-RateLimit-Remaining` | Requests left this minute |
+| `X-RateLimit-Reset` | Minute reset time, as Unix seconds |
 
-The SDKs retry `429` for embedding, video detection and job polling within the
-client timeout; other calls return the error to your code. Poll job results no
-faster than the `Retry-After` value on a `202` response (6 seconds on Trial and
-Launch, 2 seconds on other plans), and prefer
-[webhooks](/docs/api/webhooks) for long jobs. Enterprise rate limits are set by
-agreement; [contact us](/contact) if you need more capacity on another plan.
+Poll no faster than the job’s `Retry-After`: 6 seconds on Trial/Launch, 2 on other plans. [Webhooks](/docs/api/webhooks) avoid polling. SDKs retry `429` for embedding, video detection and polling within the client timeout; other calls return the error.
 
 ## Image limits
 
 | Limit | Maximum |
 | --- | --- |
-| API upload | 50 MB |
-| Delivered file | 192 MB (lossless delivery can be larger than the upload: a 1-bit image is delivered with 8-bit color, and JPEG-compressed TIFF pages with lossless compression) |
-| Dashboard upload | 20 MB (use the API for images up to 50 MB) |
-| Detection upload | 95 MB, in the API and the dashboard: delivered files can be larger than uploads |
-| Frames or pages per image | 32, including an APNG default/poster image |
-| Total pixels across frames or pages | 40 megapixels |
+| Embedding upload | 50 MB via API; 20 MB via dashboard |
+| Delivered file | 192 MB; lossless output can be larger than the upload |
+| Detection upload | 95 MB via API or dashboard |
+| Frames or pages | 32, including an APNG poster image |
+| Total pixels | 40 megapixels across frames or pages |
 | GIF frame | 1 megapixel |
 | PSD/PSB canvas | 4 megapixels |
-| PSD/PSB layers | 64 layers and 16 megapixels total, including the two added watermark layers |
+| PSD/PSB layers | 64 layers and 16 megapixels total, including two watermark layers |
 
-HEIC, HEIF and AVIF photos are not supported yet and return `415` with the
-format's name; convert them to JPEG, PNG or WebP first.
+Send encoded file bytes and a non-empty JSON `data` object. URLs and base64 strings are not file uploads. High-bit-depth and CMYK images are unsupported. HEIC, HEIF and AVIF return `415`; convert them to JPEG, PNG or WebP first.
 
-Send encoded image bytes, not a URL or base64 string. The `data` field must be a
-non-empty JSON object. Embedding preserves the original format; high-bit-depth
-and CMYK variants are unsupported. Files that browsers cannot preview can still
-be uploaded through the dashboard.
-
-See [PDF limits](/docs/api/documents#supported-files) and
-[video limits](/docs/api/videos#supported-files) for other media.
+<Cards>
+  <Card href="/docs/api/documents#supported-files" title="PDF limits">Size, page count and document features.</Card>
+  <Card href="/docs/api/videos#supported-files" title="Video limits">Codecs, duration, frames and audio.</Card>
+</Cards>
 
 ## Credits and retries
 
-Image and PDF operations each use one credit per file; video uses one credit per
-started minute. Embedding reserves credits when its durable job is accepted,
-charges once the verified result is saved, and refunds the reservation on failure. Retries and result downloads do
-not consume additional credits. During an outage, reservations remain until a worker
-can complete or finalize the job.
+Embedding reserves credits on acceptance, charges when verified output is saved, and releases the reservation on terminal failure. Downloads and replays add no charge. During an outage, reservations stay pending until a worker finishes or finalizes the job.
 
-Embedding SDK calls automatically retry transient failures and poll `202` jobs.
-A client timeout does not cancel the job. Resume with the request ID or resubmit the
-same image/data and idempotency key. Terminal JSON has `status: "failed"`; retrying
-that key returns the same failure. See [embedding](/docs/api/embed) for retention.
+| Situation | Action |
+| --- | --- |
+| Client timeout | Resume by request ID or resend the same inputs and idempotency key; the accepted job continues |
+| Terminal `status: "failed"` | Inspect `error_code`; the same key returns the same failure |
+| Sync image/PDF detection error | Handle in your code; SDKs do not retry these calls automatically |
+| Customer storage upload fails | Inspect [delivery errors](/docs/storage); verified output remains valid and retries add no charge |
 
-The standard image and PDF detection endpoints are synchronous (their `/async` alternatives use durable jobs): SDKs do not retry those detections
-automatically. Video detection uses durable jobs and automatic polling. Asset management and
-downloads consume no credits.
+See [retry rules](/docs/api/async#retry-safely) and [credit costs](/docs/billing#what-uses-credits).
 
 ## Service status
 
-Check [status.etchv.com](https://status.etchv.com) for service availability.
-For help, contact [hello@etchv.com](mailto:hello@etchv.com) with the request ID
-and HTTP status. Do not send your API key.
-
-Storage upload errors are recorded separately from watermarking errors. A failed
-cloud upload does not invalidate an already verified Etchv asset or consume a
-second credit. See [storage retry and error codes](/docs/storage).
+Check [status.etchv.com](https://status.etchv.com). For help, send [hello@etchv.com](mailto:hello@etchv.com) the request ID and HTTP status. Never send your API key.

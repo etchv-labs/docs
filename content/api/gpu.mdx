@@ -1,20 +1,14 @@
-Business and Enterprise plans can run any watermarking or detection operation on
-a GPU by adding `accelerator=gpu` to the request. In our
-[benchmarks](https://benchmarks.etchv.com/performance), GPU watermarking is about
-twice as fast for typical images and video. PDFs gain less, detection little, and
-files near the size limits little, because decoding and encoding still run on CPU.
-Results are the same as on CPU: the same native format, identifier and
-verification.
+Request GPU processing for any embedding or detection endpoint on Business or Enterprise. The output format, identifier and verification are the same as CPU processing.
+
+<Facts>
+  <Fact label="Default">CPU</Fact>
+  <Fact label="GPU cost">3× normal credits</Fact>
+  <Fact label="If GPU is not ready">CPU at normal cost</Fact>
+</Facts>
 
 ## Request GPU processing
 
-Add the query parameter to any embedding or detection endpoint, sync or async:
-[images](/docs/api/embed), [image detection](/docs/api/detect),
-[PDFs](/docs/api/documents) and [video](/docs/api/videos).
-
-| Parameter | Values | Default |
-| --- | --- | --- |
-| `accelerator` | `cpu` or `gpu` | `cpu` |
+Add `accelerator=gpu` to a sync or async request. Use `accelerator=cpu` to request CPU explicitly.
 
 ```sh
 curl --fail-with-body "https://api.etchv.com/watermarks/videos/async?accelerator=gpu" \
@@ -23,10 +17,6 @@ curl --fail-with-body "https://api.etchv.com/watermarks/videos/async?accelerator
   -F 'file=@launch.mp4' \
   -F 'data={"asset":"launch-video","recipient":"partner-42"}'
 ```
-
-The SDKs take the same option:
-
-<ResponsiveTable>
 
 | SDK | Option |
 | --- | --- |
@@ -37,27 +27,15 @@ The SDKs take the same option:
 | [C#](/docs/sdks/csharp) | `new RequestOptions(Accelerator: Accelerator.Gpu)` |
 | [Java](/docs/sdks/java) | `options.withAccelerator(EtchvClient.Accelerator.GPU)` |
 
-</ResponsiveTable>
-
-The [dashboard](/dashboard), the [MCP server](/docs/mcp) and the
-[automation integrations](/docs/integrations) offer the same choice.
+The dashboard, [MCP](/docs/mcp) and [automation integrations](/docs/integrations) offer the same choice. Gains vary by file: decoding and encoding still use CPU. See [performance benchmarks](https://benchmarks.etchv.com/performance).
 
 ## Credits and fallback
 
-A GPU operation uses three times the normal credits. Etchv reserves that amount
-when it accepts the request.
-
-If no GPU is ready, the operation runs on CPU instead and is charged the normal
-credits; the rest of the reservation is released. Failed operations refund all
-reserved credits, as usual.
+Etchv reserves 3× the normal credits. If processing falls back to CPU, it charges the normal amount and releases the difference. Failed operations release the full reservation.
 
 ## GPU readiness
 
-To save energy, Etchv runs GPUs only when someone needs them. While any
-Business or Enterprise workspace is active, at least one GPU stays running, so
-GPU requests normally start right away. Etchv adds more GPU capacity as GPU
-requests arrive; a GPU that has to start from scratch takes a few minutes, and
-requests that arrive before it is ready run on CPU.
+An active Business or Enterprise workspace keeps GPU capacity warm. Additional capacity can take a few minutes to start; requests run on CPU while it starts.
 
 ### Check readiness
 
@@ -66,19 +44,14 @@ curl --fail-with-body "https://api.etchv.com/accelerators/gpu" \
   -H "X-API-Key: $ETCHV_API_KEY"
 ```
 
-```json
-{ "accelerator": "gpu", "status": "ready", "warm_until": null, "ready_at": null }
-```
-
-| `status` | Meaning |
+| Status | Meaning |
 | --- | --- |
-| `ready` | A GPU is running. GPU requests run on it |
-| `starting` | A GPU is starting. GPU requests run on CPU until it is ready |
-| `idle` | No GPU is running. Start one before sending GPU work |
-| `unavailable` | GPU processing is not available right now |
+| `ready` | A GPU is running |
+| `starting` | Starting; requests use CPU meanwhile |
+| `idle` | No GPU is running |
+| `unavailable` | GPU processing is unavailable |
 
-Checking never starts a GPU. It needs an API key with `watermarks:embed` or
-`watermarks:detect`.
+Checking does not start a GPU. Use a key with `watermarks:embed` or `watermarks:detect`.
 
 ### Start the GPU
 
@@ -89,35 +62,28 @@ curl --fail-with-body -X POST "https://api.etchv.com/accelerators/gpu/wake" \
   -d '{"webhook_id":"wh_0123456789abcdef0123456789abcdef"}'
 ```
 
-The GPU stays on for 15 minutes after it is ready, and for as long as GPU work
-keeps arriving. Starting it again extends the window instead of starting another
-GPU. The response has the same fields as the check; `warm_until` is when your
-window ends.
+Waking uses no credits and requires Business or Enterprise. It keeps capacity warm for 15 minutes after readiness; ongoing GPU work keeps it active. Waking again extends that window.
 
-`webhook_id` is optional. That endpoint receives
-[`accelerator.ready`](/docs/api/webhooks#events) once the GPU is up, or at once
-if it already is. Without it, check readiness until `status` is `ready`.
-Starting the GPU uses no credits and needs a Business or Enterprise plan.
+The optional `webhook_id` receives [`accelerator.ready`](/docs/api/webhooks#events), immediately if already ready. Otherwise poll readiness. Both endpoints return `accelerator`, `status`, `warm_until` and `ready_at`.
 
 ## See which accelerator ran
 
-| Where | Field |
+| Response | Field |
 | --- | --- |
-| Sync results and job result downloads | `X-Etchv-Accelerator` header: `gpu` or `cpu` |
-| Job status, receipts and webhook events | `accelerator_requested` and `accelerator` (`null` until processing starts) |
-| [Usage](/dashboard/history) | The accelerator of each operation |
+| Sync result or result download | `X-Etchv-Accelerator`: `cpu` or `gpu` |
+| Receipt, job status or webhook | `accelerator_requested` and actual `accelerator` (`null` before processing) |
+| Completed job | `credits`: actual charge |
 
-A completed job's `credits` shows what was charged.
+The [Usage dashboard](/dashboard/history) also shows the accelerator.
 
 ## Errors
 
 | Status | Reason |
 | --- | --- |
-| `403` | Your plan does not include GPU processing. Upgrade to Business or Enterprise |
-| `404` | `webhook_id` is not an enabled endpoint in your workspace |
-| `503` | GPU processing is not available right now. Requests run on CPU |
-| `409` | The idempotency key was already used with a different `accelerator` |
-| `422` | `accelerator` is not `cpu` or `gpu` |
+| `403` | Plan does not include GPU |
+| `404` | Webhook is missing or disabled |
+| `503` | GPU service unavailable; retry later or request CPU |
+| `409` | Same idempotency key used with a different accelerator |
+| `422` | Accelerator must be `cpu` or `gpu` |
 
-GPU requests count toward your plan's [rate limits](/docs/api/errors#rate-limits)
-like any other request.
+GPU requests share your plan’s [rate limits](/docs/api/errors#rate-limits).

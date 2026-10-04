@@ -1,4 +1,4 @@
-Use the [Etchv Go SDK](https://github.com/etchv-labs/go-sdk) with Go 1.25+. MIT licensed.
+Go 1.25+. Import the package as `etchv`; reuse one concurrency-safe client. MIT licensed.
 
 ## Install
 
@@ -6,13 +6,9 @@ Use the [Etchv Go SDK](https://github.com/etchv-labs/go-sdk) with Go 1.25+. MIT 
 go get github.com/etchv-labs/go-sdk@v1.0.0
 ```
 
-The package name is `etchv`. The client is safe for concurrent use; create one and reuse it.
-
 ## Embed a file
 
-Set `ETCHV_API_KEY` to a server-side [API key](/docs/authentication) with the
-`watermarks:embed` scope and available credits. The following snippets use this
-configured client and a `ctx` context.
+Set `ETCHV_API_KEY` on your server. This example needs `watermarks:embed`, an active plan and available credits.
 
 ```go
 package main
@@ -42,20 +38,42 @@ func main() {
 }
 ```
 
-`CheckAPIKey` confirms the key and returns its organization, key ID, and scopes
-without using credits.
+`CheckAPIKey` checks credentials for free. Write output bytes without re-encoding.
 
 ## Images, documents and video
 
-`EmbedImage` / `DetectImage`, `EmbedDocument` / `DetectDocument`, `EmbedVideo` / `DetectVideo`. Write returned bytes directly using the result’s filename. Embedding also returns `WatermarkID`, `RequestID`, `AssetID`, and `SourceAssetID`. Detection returns `Watermarked`, `Confidence`, a nullable `WatermarkID`, and per-frame/page `Units`.
+| Media | Embed / detect methods |
+| --- | --- |
+| [Images](/docs/api/embed) | `EmbedImage` / `DetectImage` |
+| [PDFs](/docs/api/documents) | `EmbedDocument` / `DetectDocument` |
+| [Videos](/docs/api/videos) | `EmbedVideo` / `DetectVideo` |
 
-See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos).
+Native output is in `result.Bytes` for every media type. Embedding also returns `WatermarkID`, `RequestID`, `ContentType`, `Filename`, `AssetID`, `SourceAssetID` and `StorageDeliveryID`.
+
+Detection returns the ID, confidence and per-frame/page results—not the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
+
+<Details title="Client configuration">
+
+`etchv.New(key, etchv.WithBaseURL(url), etchv.WithTimeout(d), etchv.WithHTTPClient(c))`
+
+The default timeout is 120 seconds. Every call takes a context for cancellation. Set `Options.Filename` and `Options.IdempotencyKey` per media request. Later recipes assume an open client and `ctx`.
+
+</Details>
 
 ## Retries and recovery
 
-Embedding and video detection poll durable jobs automatically. Use a stable idempotency key (`Options.IdempotencyKey`) to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `GetEmbedResult(ctx, requestID)` / `GetDetectionResult(ctx, requestID)`.
+Embedding and video detection retry and poll automatically; image/PDF detection does not. Save an idempotency key before uploading to recover across restarts.
 
-Configure the client with options: `etchv.New(key, etchv.WithBaseURL(url), etchv.WithTimeout(d), etchv.WithHTTPClient(c))`. All calls accept a context for cancellation. Every failure is an `*etchv.Error`:
+| Situation | Action |
+| --- | --- |
+| Client timeout | The accepted job continues; resume or resend identical inputs with the same key |
+| Resume a job | `GetEmbedResult(ctx, requestID)` / `GetDetectionResult(ctx, requestID)` |
+| Changed inputs | Use a new key; reusing one returns `409` |
+| Collect a saved result | Within 24 hours; see [retention](/docs/api/assets#files-and-records) |
+
+<Details title="Error types and handling">
+
+Failures are `*etchv.Error` with `StatusCode`, `Detail`, `RequestID`, `IdempotencyKey`, and job `JobStatus` / `ErrorCode` when available. Status `0` means network failure, cancellation or client deadline; `errors.Is(err, context.DeadlineExceeded)` works.
 
 ```go
 var apiErr *etchv.Error
@@ -64,15 +82,15 @@ if errors.As(err, &apiErr) {
 }
 ```
 
-It also carries `IdempotencyKey`, and `JobStatus` / `ErrorCode` when a job reports them. `StatusCode` is `0` for network failures, cancellation, or the client deadline; `errors.Is(err, context.DeadlineExceeded)` works. Common statuses: `401` invalid key, `402` credits/billing, `403` missing scope or role, `404` not found, `409` idempotency or version conflict, `410` expired or deleted result, `422` invalid input.
+See [HTTP errors](/docs/api/errors) and [retry behavior](/docs/api/async#retry-safely). Save the request ID when reporting failures.
 
-Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.
+</Details>
 
 ## Asset library
 
-Embedding returns IDs for the original and watermarked assets. Use `assets:read`
-to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
-membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+Scopes: `assets:read` for downloads, `assets:write` for edits, `assets:delete` plus owner/admin for deletion. No credits used.
+
+<Details title="List, edit and download assets">
 
 ```go
 page, err := client.ListAssets(ctx, etchv.AssetListOptions{Kind: "watermarked", Limit: 25})
@@ -89,16 +107,19 @@ for _, item := range page.Items {
 file, err := client.DownloadAsset(ctx, assetID) // file.Bytes, file.ContentType, file.Filename
 ```
 
-Edits replace metadata and require the current version. Reload and reconcile on
-`409`. Asset operations use no credits and never change the embedded watermark.
-`DeleteAsset` removes one asset and `DeleteAssets` removes up to 50 atomically.
-See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+Edits replace metadata and require the current version; reconcile `409` conflicts. `DeleteAsset` / `DeleteAssets` delete one asset or 1–50 atomically. [Asset fields, filters and retention](/docs/api/assets).
+
+</Details>
 
 ## Async jobs and webhooks
 
-Regular embed/detect methods wait for a result. Submission methods return a `*etchv.Job`
-receipt without polling. Choose `etchv.MediaImages`, `etchv.MediaDocuments`, or
-`etchv.MediaVideos`; the example below assumes you have loaded a PDF into memory.
+Submit for a receipt without waiting: `SubmitEmbed` / `SubmitDetection`; media: `etchv.MediaImages`, `etchv.MediaDocuments`, `etchv.MediaVideos`.
+
+`GetEmbedJob` for embedding; `GetDetectionJob` for detection.
+
+<Details title="Submit and collect an async job">
+
+Load the media bytes before submitting.
 
 ```go
 job, err := client.SubmitEmbed(ctx, etchv.MediaDocuments, pdfBytes,
@@ -113,16 +134,13 @@ if status.Status == "succeeded" {
 }
 ```
 
-Use `SubmitDetection` for detection without forensic data, `GetDetectionJob` for its
-status, and `GetDetectionResult` for the detection JSON.
+The webhook is optional (Java/Rust: pass `null` / `None`). Save the receipt. [Job handling](/docs/api/async).
 
-Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
-submitting. Persist your idempotency key before uploading. After success, collect
-the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+</Details>
 
-Manage endpoints with `CreateWebhook` (its `SigningSecret` is returned only once),
-`ListWebhooks`, `UpdateWebhook`, `DeleteWebhook`, `ListWebhookDeliveries`, and
-`RedeliverWebhook`. Verify every delivery against the raw request body:
+<Details title="Manage endpoints and verify webhooks">
+
+Methods: `CreateWebhook`, `ListWebhooks`, `UpdateWebhook`, `DeleteWebhook`, `ListWebhookDeliveries`, `RedeliverWebhook`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the one-time signing secret.
 
 ```go
 body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
@@ -132,20 +150,20 @@ if err != nil { http.Error(w, "invalid signature", 400); return }
 // Deduplicate on event.ID, enqueue work, then return 2xx.
 ```
 
-`VerifyWebhook` checks the HMAC-SHA256 signature in constant time, rejects timestamps
-more than five minutes from your clock, and matches the event ID header.
+`VerifyWebhook` verifies the signature, timestamp and matching event ID. Use raw bytes and a 300-second tolerance. Deduplicate, enqueue, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
+
+</Details>
 
 ## GPU processing
 
-On Business and Enterprise plans, pass `etchv.Options{Accelerator: etchv.AcceleratorGPU}` to any embed or detect
-call. GPU processing uses 3× credits; if no GPU is ready, the request runs on CPU
-at standard credits. `result.Accelerator` reports the hardware that ran. See
+Pass `etchv.Options{Accelerator: etchv.AcceleratorGPU}` on Business or Enterprise. GPU uses 3× credits; CPU fallback uses normal credits. `result.Accelerator` reports the accelerator used. See
 [GPU processing](/docs/api/gpu).
 
 ## Choose where results are stored
 
-Etchv storage is included by default. To use your own bucket, [connect and verify
-a destination](/docs/storage), then pass its ID and an optional object key:
+[Connect your bucket](/docs/storage), then pass its destination ID and optional object key. Omit both for Etchv storage.
+
+<Details title="Deliver to your bucket">
 
 ```go
 job, err := client.SubmitEmbed(ctx, etchv.MediaDocuments, pdfBytes,
@@ -158,11 +176,8 @@ if err != nil { return err }
 delivery, err := client.GetStorageDelivery(ctx, *job.StorageDeliveryID)
 ```
 
-Wait for the watermark job to succeed before reading its delivery record;
-it returns `404` until then. With `storage:read`, poll delivery status until
-`stored` or a terminal failure; `RetryStorageDelivery` retries a `failed` or `cancelled`
-upload without additional credits, and `DownloadStorageDelivery` fetches a stored object.
-With `storage:write`, manage destinations with `CreateStorageDestination`,
-`VerifyStorageDestination`, `UpdateStorageDestination`, and `DeleteStorageDestination`,
-and move an existing asset with `CreateStorageDelivery`.
-See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).
+After job success, inspect delivery with `storage:read` (earlier reads return `404`). Once `stored`, use `DownloadStorageDelivery` to download.
+
+With `storage:write` and owner/admin access, `RetryStorageDelivery` retries failed/cancelled delivery for free. Manage with: `CreateStorageDestination`, `VerifyStorageDestination`, `UpdateStorageDestination`, `DeleteStorageDestination`, `CreateStorageDelivery`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
+
+</Details>

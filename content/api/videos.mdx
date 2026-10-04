@@ -1,94 +1,99 @@
 <Endpoint method="POST" path="/watermarks/videos" />
 
-Watermark every frame in a supported MP4 or MOV while retaining its container,
-frame timing and supported audio. Use `POST /watermarks/videos/detect` to recover
-identifiers from all frames.
+<Facts>
+  <Fact label="Upload">20 MB · H.264</Fact>
+  <Fact label="Marking">Every frame</Fact>
+  <Fact label="CPU cost">1 credit / min*</Fact>
+</Facts>
+
+*Per started minute, for each embed or detect operation.*
+
+## Request
+
+Use `watermarks:embed`, a supported MP4/MOV and a non-empty JSON reference object.
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/videos/async \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H "Idempotency-Key: campaign-preview-42" \
+  -F 'file=@preview.mp4' \
+  --form-string 'data={"delivery":"campaign-preview-42"}'
+```
+
+This returns a `202` receipt. [Collect the result](/docs/api/async#retrieve-a-pending-result-either-mode)
+with the same organization’s key. The finished file keeps its container,
+frame timing and supported audio; audio is not watermarked.
 
 ## Choose sync or async
 
-| Mode | Endpoint | What you receive |
-| --- | --- | --- |
-| Synchronous | `POST /watermarks/videos` | `200` verified file, or `202` if processing continues |
-| Asynchronous | `POST /watermarks/videos/async` | `202` job receipt; retrieve the result later or use a webhook |
+| Operation | Endpoint |
+| --- | --- |
+| Embed | `POST /watermarks/videos` |
+| Detect | `POST /watermarks/videos/detect` with `file` and `watermarks:detect` |
+| Background embed / detect | Append `/async` to either endpoint |
 
-Detection also supports both modes: `POST /watermarks/videos/detect` or
-`POST /watermarks/videos/detect/async`.
-
-See [sync and async](/docs/api/async) for result handling. Async requests can select
-a `webhook_id` to receive [signed completion events](/docs/api/webhooks).
-On Business and Enterprise plans, add `accelerator=gpu` for
-[GPU processing](/docs/api/gpu).
+Sync waits briefly and returns `202` if work continues. Both operations use durable
+jobs. Optional queries: `accelerator=gpu` on Business/Enterprise; `webhook_id` for
+async; `storage_destination_id` and `storage_key` for embedding.
+[All options](/docs/api/embed#request-options).
 
 ## <span id="first-supported-profile" />Supported files
 
-- MP4 or MOV containing one progressive, 8-bit H.264 video track (YUV 4:2:0).
-- Constant frame rate, 1–60 fps, starting at zero; square pixels and no rotation.
-- At most 120 seconds, 240 frames, 1 million pixels per frame and 40 million
-  decoded pixels total. Dimensions must be even. All limits apply together.
-- Up to 20 MB input and 100 MB watermarked output (lossless re-encoding can be
-  larger than the source). Detection accepts up to 95 MB; the dashboard
-  watermarks videos up to 20 MB.
-- No audio, or one synchronized mono/stereo AAC-LC track. Audio packets and timing
-  are copied and verified; audio itself is not watermarked.
-- HDR, variable frame rates, fragmented MP4, additional tracks, subtitles,
-  attachments and other codecs are not supported in this release.
+All limits apply together: for example, the 240-frame cap allows 10 seconds at 24 fps.
 
-Output uses lossless H.264 encoding of YUV 4:2:0 pixels. This can increase file
-size and uses the High 4:4:4 Predictive coding profile even though the pixel format
-remains 4:2:0. Use a decoder that supports lossless H.264; universal browser or
-hardware playback is not promised. Container metadata is copied where supported,
-not guaranteed byte-for-byte.
+| Requirement | Limit |
+| --- | --- |
+| Container / codec | MP4 or MOV; one progressive 8-bit H.264 track, YUV 4:2:0 |
+| Timing | Constant 1–60 fps, starts at zero; no rotation |
+| Duration / frames | 120 seconds / 240 frames |
+| Dimensions | Even dimensions, square pixels; 1 MP per frame, 40 MP total |
+| Upload / output / detection | 20 MB / 100 MB / 95 MB |
+| Audio | None, or one synchronized mono/stereo AAC-LC track |
 
-Embedding accounts for chroma conversion. Every frame of the final encoded
-video must recover the exact identifier and meet a minimum 35 dB PSNR before
-Etchv returns the result. Editing, transcoding and recompression can affect recovery.
+HDR, variable frame rates, fragmented MP4, other codecs, extra tracks, subtitles
+and attachments are unsupported.
+
+<Callout title="Check playback compatibility">
+  Native output uses lossless H.264 with the High 4:4:4 Predictive coding profile
+  and YUV 4:2:0 pixels. Use a compatible decoder; browser and hardware playback
+  varies. Lossless output can be larger than the source.
+</Callout>
+
+<Details title="What verification checks">
+
+Every frame of the final encoded video must recover the exact ID and meet 35 dB
+PSNR, accounting for chroma conversion. Audio packets and timing are copied and
+verified. Container metadata is copied where supported, not byte-for-byte.
+Editing, transcoding or recompression can affect recovery.
+
+</Details>
 
 ## Durable embedding and detection
 
-Send `file` and, for embedding, a non-empty JSON `data` object as multipart form
-fields. Authenticate with an API key scoped for `watermarks:embed` or
-`watermarks:detect`, respectively. Supply an `Idempotency-Key` to recover the same
-operation after a disconnected request.
+- **Embed result:** native video bytes at `/watermarks/jobs/{request_id}/result`.
+- **Detect result:** JSON at `/watermarks/detection-jobs/{request_id}/result`.
+- **Per-frame results:** zero-based `units`. The top-level ID is present only when every frame recovers the same ID.
+- **Retry:** keep the same upload and `Idempotency-Key`. A disconnect does not cancel work.
 
-Both operations wait briefly, then return `202` if work is still running. Follow
-the result URL with the same API key, at the interval in `Retry-After` (6 seconds
-on Trial and Launch, 2 seconds on other plans):
-
-- Embedding: `/watermarks/jobs/{request_id}/result`
-- Detection: `/watermarks/detection-jobs/{request_id}/result`
-
-A completed embedding returns video bytes. Completed detection returns JSON with
-one zero-based `units` entry per frame. Top-level `watermarked` is true only when
-all frames recover the same identifier. Partial or differing identifiers remain
-visible in `units`.
-
-Work continues after client disconnection, with bounded retries and a 30-minute
-job deadline. Results are retrievable for 24 hours. Retry the same upload with
-the same key to retrieve the saved result; do not create a new key merely because
-a request timed out.
+Follow `Retry-After` when polling. Jobs have a 30-minute deadline; completed
+results last 24 hours. [Retry and recovery details](/docs/api/async#retry-safely).
 
 ## Credits
 
-Each successful embedding or detection uses one credit per started minute of
-video: up to 60 seconds costs one credit; over 60 and up to 120 seconds costs two.
-Embedding followed by detection is two separately charged operations. The full
-amount is reserved before work starts, refunded on failure and settled once.
-Retries and saved-result replay do not create another charge.
+| Video length | CPU credits per operation |
+| --- | --- |
+| Up to 60 seconds | 1 |
+| Over 60, up to 120 seconds | 2 |
 
-Python SDK: `embed_video` / `detect_video`. Node.js SDK: `embedVideo` / `detectVideo`.
-SDKs poll durable jobs automatically within their configured timeout. The `image`
-field of an embedding result contains the native video bytes; use its returned
-filename and content type when saving the file.
+Embedding and detection are charged separately. Credits are reserved on
+acceptance, settled once on success and refunded on failure. Retries and saved
+result downloads cost no extra credits. [GPU pricing](/docs/api/gpu#credits-and-fallback).
 
-## Asset library
+Python: `embed_video` / `detect_video`. Node.js: `embedVideo` / `detectVideo`.
+Their result’s `image` field contains video bytes; save the returned filename and
+content type. SDKs poll within their configured timeout.
 
-Use `X-Asset-ID` and `X-Source-Asset-ID` to find the output and original in the
-[asset library](/docs/api/assets). Etchv-hosted downloads last 30 days; records
-remain until deleted. Detection uploads do not create assets.
+## <span id="choose-where-results-are-stored" />Asset library
 
-## Choose where results are stored
-
-To store results in your own bucket, pass `storage_destination_id` and an optional
-`storage_key` as query parameters. Delivery retries reuse the verified output
-without another charge. The [storage guide](/docs/storage) covers provider setup,
-delivery status, and retention.
+`X-Asset-ID` and `X-Source-Asset-ID` identify the output and original.
+[File retention](/docs/api/assets#files-and-records) · [Customer storage](/docs/storage).

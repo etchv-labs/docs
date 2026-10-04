@@ -1,61 +1,73 @@
 ## Start with a free trial
 
-[Sign up](/signup) for 100 credits over seven days
-in your personal workspace, with all supported formats and no credit card required.
-Use the dashboard immediately with your signed-in session; create an API key only
-for external integrations. The trial starts at signup and never renews. Creating
-additional workspaces does not grant more trial credits.
+<Facts>
+  <Fact label="Trial credits">100</Fact>
+  <Fact label="Duration">7 days</Fact>
+  <Fact label="Payment card">Not required</Fact>
+</Facts>
 
-When credits run out or seven days pass, new processing pauses. No automatic charge
-or subscription is created. Your account and asset records remain; normal file
-retention still applies. Upgrade in [Dashboard → Billing](/dashboard/billing) any time.
-After payment is confirmed, paid credits are granted in the same workspace. Unused
-trial credits remain available until their original expiry and are spent first.
-Paid-plan format limits apply after upgrading.
+[Sign up](/signup) and use any supported format in your personal workspace.
+The trial starts at signup, never renews and creates no automatic charge.
+When time or credits run out, processing pauses; your account and records remain.
+
+<Details title="Upgrading during a trial">
+
+Upgrade in [Billing](/dashboard/billing). Paid credits arrive in the same workspace
+after payment confirmation. Unused trial credits are spent first until their
+original expiry. Paid-plan format limits apply as soon as you upgrade. Additional workspaces do not
+grant another trial. Normal file retention continues after the trial ends.
+
+</Details>
 
 ## Plans and formats
 
-Choose a plan in [Dashboard → Billing](/dashboard/billing). Subscriptions belong
-to an organization: members share its credits, and only the owner can change
-the plan, payment details, or renewal settings.
-
 <ResponsiveTable>
 
-| Plan | Monthly billing | Annual billing | Credits each month | Formats |
+| Plan | Monthly | Annual, paid upfront | Credits / month | Formats |
 | --- | --- | --- | --- | --- |
-| Launch | $19 | $182.40 | 250 | All supported images, including animation, TIFF pages and Photoshop layers |
-| Growth | $49 | $470.40 | 1,000 | All supported images, PDF and H.264 MP4/MOV video |
-| Scale | $99 | $950.40 | 2,500 | All supported images, PDF and H.264 MP4/MOV video |
-| Business | $499 | $4,790.40 | 15,000 | All supported images, PDF and H.264 MP4/MOV video |
+| Launch | $19 | $182.40 | 250 | All supported images |
+| Growth | $49 | $470.40 | 1,000 | Images, PDFs and video |
+| Scale | $99 | $950.40 | 2,500 | Images, PDFs and video |
+| Business | $499 | $4,790.40 | 15,000 | Images, PDFs and video |
 | Enterprise | Custom | Custom | Agreed allowance | All supported formats |
 
 </ResponsiveTable>
 
-Prices are USD, before applicable taxes. Annual billing is paid upfront and saves
-20%. Credits are allocated monthly, including on annual plans. Unused credits
-expire when that monthly allocation ends; annual payment does not make the entire
-year's credits available immediately. Your dashboard shows the next credit reset
-and subscription renewal separately.
+Prices are USD before tax. Annual billing saves 20%. Credits arrive monthly and
+expire at each allocation’s end, including on annual plans.
+
+Plans and credits belong to an organization. Members share its allowance;
+only the owner can change billing. Image access includes supported animation,
+TIFF pages and Photoshop layers. Format restrictions apply to both embedding and
+detection, in the dashboard and API; unsupported plan access returns `403` before reservation.
+
+## What uses credits
+
+| Operation | CPU credits |
+| --- | --- |
+| Image or PDF embed | 1 per file, including its frames/pages/layers |
+| Image or PDF detect | 1 per file, even when no watermark is found |
+| Video embed or detect | 1 per started minute; 61 seconds costs 2 |
+| Asset management, saved downloads, job retries | No additional credits |
+
+Embedding and detection are separate charges. Failed operations refund reserved
+credits. At zero available credits, new processing returns `402`; there are no
+automatic overage charges. Accepted jobs retain their reservation until finalized.
 
 ## GPU processing
 
-Business and Enterprise plans can run any operation on a GPU by adding
-`accelerator=gpu`. A GPU operation uses three times the normal credits. If no GPU
-is ready, it runs on CPU and is charged the normal credits. See
-[GPU processing](/docs/api/gpu).
+Business and Enterprise can request `accelerator=gpu`. It costs **3× normal
+credits** when GPU runs; CPU fallback costs the normal amount.
+[GPU availability and options](/docs/api/gpu).
 
 ## API rate limits
 
-Each plan limits how many operations an organization can have in progress at once
-and how many API requests it can make per minute. Limits are shared by every key
-and member in the organization, including the dashboard.
-
 <ResponsiveTable>
 
-| Plan | Concurrent operations | API requests per minute |
+| Plan | Concurrent operations | Requests / minute |
 | --- | --- | --- |
-| Trial | One at a time | 20 |
-| Launch | One at a time | 20 |
+| Trial | 1 | 20 |
+| Launch | 1 | 20 |
 | Growth | 2 | 100 |
 | Scale | 5 | 300 |
 | Business | 16 | 1,000 |
@@ -63,47 +75,19 @@ and member in the organization, including the dashboard.
 
 </ResponsiveTable>
 
-On Trial and Launch, calls run one at a time: start the next embedding or video
-detection when the previous one finishes. Starting another while one is in progress
-returns `429` with a link to [upgrade](https://etchv.com/dashboard/billing) to a plan
-that runs operations in parallel.
-
-See [rate limits](/docs/api/errors#rate-limits) for what counts toward each limit
-and how to handle a `429` response.
-
-Format access applies to embedding and detection, through both the dashboard and
-the synchronous and asynchronous APIs. [Image](/docs/api/embed),
-[PDF](/docs/api/documents) and [video](/docs/api/videos) limits still apply.
-A format outside your plan returns `403` before credits are reserved.
-
-## What uses credits
-
-- A successful image or PDF operation uses one credit per file, including supported
-  animation frames, pages and layers.
-- A video operation uses one credit per started minute. A 61-second video costs two
-  credits.
-- Embedding and detection are separate operations. Detection costs credits even
-  when no watermark is found.
-- Failed operations refund reserved credits. Automatic job retries do not create
-  additional charges. Use the same idempotency key when recovering a request.
-- Viewing assets and downloading saved results do not use credits.
-
-When available credits run out, new processing requests return `402`. There are
-no automatic overage charges. Requests already accepted keep their reservations
-until they finish. See [request recovery](/docs/api/errors).
+Limits are shared across the organization’s keys and dashboard. Excess requests
+return `429` and a `Retry-After` interval; wait or upgrade for more capacity.
+[What counts toward each limit](/docs/api/errors#rate-limits).
 
 ## Change or cancel a subscription
 
-The workspace owner can select a new plan or billing frequency in Dashboard →
-Billing. The change starts at the next subscription renewal. Current access and
-credits continue until then, with no prorated adjustment. On an annual plan, that
-means the end of the paid year. Choose the current plan and frequency to remove a
-scheduled change.
+| Action | When it takes effect |
+| --- | --- |
+| Change plan or billing frequency | Next subscription renewal; no proration. Annual plans change at the end of the paid year |
+| Cancel renewal | Access continues through the paid period |
+| Remove a scheduled change | Select the current plan and frequency |
+| Update payment details / view invoices | Open **Manage billing** |
 
-Use **Manage billing** to update payment details, view invoices or cancel renewal.
-Cancellation leaves access available through the paid period. If renewal is
-canceled, resume it before scheduling a plan change. An overdue payment can pause
-new processing requests; update payment details in Manage billing.
-
-[Contact us](/contact) for Enterprise allowances and billing terms, evaluations or
-additional capacity.
+Use [Dashboard → Billing](/dashboard/billing). Resume a canceled renewal before
+scheduling a plan change. Overdue payments may pause processing.
+[Contact us](/contact) for Enterprise terms, evaluations or additional capacity.

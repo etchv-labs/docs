@@ -1,4 +1,4 @@
-Use the [Etchv C# SDK](https://github.com/etchv-labs/csharp-sdk) with .NET 10. MIT licensed.
+.NET 10. Reuse one thread-safe `EtchvClient` and dispose it on shutdown. MIT licensed.
 
 ## Install
 
@@ -8,13 +8,11 @@ git clone --branch v1.0.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-
 dotnet add reference ../etchv-csharp-sdk/src/Etchv/Etchv.csproj
 ```
 
-The SDK is not published on NuGet; install it from the tagged GitHub release as shown. Don't install NuGet packages that claim to be the Etchv SDK.
+Install from the tagged GitHub source; there is no official NuGet package.
 
 ## Embed a file
 
-Set `ETCHV_API_KEY` to a server-side [API key](/docs/authentication) with the
-`watermarks:embed` scope and available credits. The following snippets use this
-configured client.
+Set `ETCHV_API_KEY` on your server. This example needs `watermarks:embed` and `watermarks:detect`, an active plan and available credits.
 
 ```csharp
 using Etchv;
@@ -29,22 +27,42 @@ var detection = await client.DetectImageAsync(result.Bytes, new RequestOptions(F
 Console.WriteLine($"{detection.Watermarked} {detection.WatermarkId} {detection.Confidence:P0}");
 ```
 
-`GetApiKeyInfoAsync` confirms the key and lists its scopes without using credits.
-`EtchvClient` is thread-safe; create one per application and dispose it on shutdown.
+`GetApiKeyInfoAsync` checks credentials for free. Write output bytes without re-encoding.
 
 ## Images, documents and video
 
-`EmbedImageAsync` / `DetectImageAsync`, `EmbedDocumentAsync` / `DetectDocumentAsync`, `EmbedVideoAsync` / `DetectVideoAsync`. Write returned bytes directly using the result’s filename. Embedding returns `Bytes`, `WatermarkId`, `RequestId`, `ContentType`, `Filename`, and asset IDs; detection returns `Watermarked`, `Confidence`, a nullable `WatermarkId`, `RequestId`, and per-frame or per-page `Units`.
+| Media | Embed / detect methods |
+| --- | --- |
+| [Images](/docs/api/embed) | `EmbedImageAsync` / `DetectImageAsync` |
+| [PDFs](/docs/api/documents) | `EmbedDocumentAsync` / `DetectDocumentAsync` |
+| [Videos](/docs/api/videos) | `EmbedVideoAsync` / `DetectVideoAsync` |
 
-See [image requirements](/docs/api/embed), [PDF requirements](/docs/api/documents) and [video requirements](/docs/api/videos).
+Native output is in `result.Bytes` for every media type. Embedding also returns `WatermarkId`, `RequestId`, `ContentType`, `Filename`, `AssetId`, `SourceAssetId` and `StorageDeliveryId`.
+
+Detection returns the ID, confidence and per-frame/page results—not the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
+
+<Details title="Client configuration">
+
+`new EtchvClient(key, baseUrl, timeout, httpClient)` sets the timeout (default 120 seconds) and optional `HttpClient`. Custom HTTP handlers must disable redirects.
+
+Every operation takes a `CancellationToken`; cancellation raises `OperationCanceledException`. Use `RequestOptions(Filename: ..., IdempotencyKey: ...)` for media requests. Later recipes assume an open client.
+
+</Details>
 
 ## Retries and recovery
 
-Embedding and video detection poll durable jobs automatically. Use a stable idempotency key to recover across process restarts. The default client deadline is 120 seconds; a timeout does not cancel server work. Saved results are available for 24 hours. Resume with `GetEmbedResultAsync(requestId)` / `GetDetectionResultAsync(requestId)`.
+Embedding and video detection retry and poll automatically; image/PDF detection does not. Save an idempotency key before uploading to recover across restarts.
 
-`new EtchvClient(key, baseUrl, timeout, httpClient)` configures the deadline and an optional `HttpClient` (for example from `IHttpClientFactory`; its handler must not follow redirects). Every operation accepts `CancellationToken`; caller cancellation propagates `OperationCanceledException`. Dispose the client when finished.
+| Situation | Action |
+| --- | --- |
+| Client timeout | The accepted job continues; resume or resend identical inputs with the same key |
+| Resume a job | `GetEmbedResultAsync(requestId)` / `GetDetectionResultAsync(requestId)` |
+| Changed inputs | Use a new key; reusing one returns `409` |
+| Collect a saved result | Within 24 hours; see [retention](/docs/api/assets#files-and-records) |
 
-API failures throw `EtchvException` with `StatusCode` (`0` for a network failure or the client deadline), `RequestId` (quote it to support), `IdempotencyKey`, `Detail`, and `ErrorCode` / `ErrorStatus` from a JSON error body:
+<Details title="Error types and handling">
+
+`EtchvException` exposes `StatusCode`, `RequestId`, `IdempotencyKey`, `Detail`, `ErrorCode` and `ErrorStatus`. Status `0` indicates a network failure or client deadline.
 
 ```csharp
 try
@@ -61,13 +79,15 @@ catch (EtchvException e)
 }
 ```
 
-Image/PDF operations use one credit per file; video operations use one credit per started minute. Audio is preserved but not watermarked.
+See [HTTP errors](/docs/api/errors) and [retry behavior](/docs/api/async#retry-safely). Save the request ID when reporting failures.
+
+</Details>
 
 ## Asset library
 
-Embedding returns IDs for the original and watermarked assets. Use `assets:read`
-to list and download, `assets:write` to edit, and `assets:delete` with owner/admin
-membership to delete. See [asset retention and storage](/docs/api/assets#files-and-records).
+Scopes: `assets:read` for downloads, `assets:write` for edits, `assets:delete` plus owner/admin for deletion. No credits used.
+
+<Details title="List, edit and download assets">
 
 ```csharp
 var page = await client.ListAssetsAsync(new AssetListOptions(Kind: "watermarked"));
@@ -82,16 +102,19 @@ foreach (var item in page.Items) {
 // Use NextCursor with the same filters to continue listing.
 ```
 
-Edits replace metadata and require the current version. Reload and reconcile on
-`409`. Asset operations use no credits and never change the embedded watermark.
-`DeleteAssetAsync` removes one asset and `DeleteAssetsAsync` removes up to 50 atomically.
-See the [asset API](/docs/api/assets) for pagination, deletion, and field details.
+Edits replace metadata and require the current version; reconcile `409` conflicts. `DeleteAssetAsync` / `DeleteAssetsAsync` delete one asset or 1–50 atomically. [Asset fields, filters and retention](/docs/api/assets).
+
+</Details>
 
 ## Async jobs and webhooks
 
-Regular embed/detect methods wait for a result. Submission methods return a `JobReceipt`
-without polling. Choose `images`, `documents`, or `videos`; the example
-below assumes you have loaded a PDF into memory.
+Submit for a receipt without waiting: `SubmitEmbedAsync` / `SubmitDetectionAsync`; media: `images`, `documents`, `videos`. These return a `JobReceipt`; the `Async` suffix on regular methods refers to C# async I/O, not server submission mode.
+
+`GetJobAsync(requestId)` for embedding; `GetJobAsync(requestId, detect: true)` for detection.
+
+<Details title="Submit and collect an async job">
+
+Load the media bytes before submitting.
 
 ```csharp
 var job = await client.SubmitEmbedAsync("documents", pdfBytes,
@@ -104,17 +127,13 @@ if (status.Status == "succeeded")
 }
 ```
 
-Use `SubmitDetectionAsync` for detection without forensic data, check it with
-`GetJobAsync(requestId, detect: true)`, and collect it with `GetDetectionResultAsync`.
+The webhook is optional (Java/Rust: pass `null` / `None`). Save the receipt. [Job handling](/docs/api/async).
 
-Create an optional [webhook endpoint](/docs/api/webhooks) and pass its ID when
-submitting. Persist your idempotency key before uploading. After success, collect
-the authenticated result as described in [async result handling](/docs/api/async#retrieve-a-pending-result-either-mode).
+</Details>
 
-With `webhooks:read` and `webhooks:write` (owner or admin), manage endpoints from the SDK:
-`CreateWebhookAsync(url)` returns `SigningSecret` once, alongside `ListWebhooksAsync`,
-`UpdateWebhookAsync`, `DeleteWebhookAsync`, `ListWebhookDeliveriesAsync`, and
-`RedeliverWebhookAsync`. Verify each delivery against the raw request body before parsing it:
+<Details title="Manage endpoints and verify webhooks">
+
+Methods: `CreateWebhookAsync`, `ListWebhooksAsync`, `UpdateWebhookAsync`, `DeleteWebhookAsync`, `ListWebhookDeliveriesAsync`, `RedeliverWebhookAsync`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the one-time signing secret.
 
 ```csharp
 using var buffer = new MemoryStream();
@@ -125,20 +144,20 @@ if (!WebhookSignature.Verify(buffer.ToArray(), request.Headers["X-Etchv-Timestam
 // Parse JSON, check id == X-Etchv-Event-ID, deduplicate, enqueue work, then return 2xx.
 ```
 
-`Verify` checks the HMAC-SHA256 signature in constant time and rejects timestamps more
-than five minutes from your clock.
+`WebhookSignature.Verify` checks the signature and timestamp. Your handler must also compare the body ID with `X-Etchv-Event-ID`. Use raw bytes and a 300-second tolerance. Deduplicate, enqueue, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
+
+</Details>
 
 ## GPU processing
 
-On Business and Enterprise plans, pass `new RequestOptions(Accelerator: Accelerator.Gpu)` to any embed or detect
-call. GPU processing uses 3× credits; if no GPU is ready, the request runs on CPU
-at standard credits. `result.Accelerator` reports the hardware that ran. See
+Pass `new RequestOptions(Accelerator: Accelerator.Gpu)` on Business or Enterprise. GPU uses 3× credits; CPU fallback uses normal credits. `result.Accelerator` reports the accelerator used. See
 [GPU processing](/docs/api/gpu).
 
 ## Choose where results are stored
 
-Etchv storage is included by default. To use your own bucket, [connect and verify
-a destination](/docs/storage), then pass its ID and an optional object key:
+[Connect your bucket](/docs/storage), then pass its destination ID and optional object key. Omit both for Etchv storage.
+
+<Details title="Deliver to your bucket">
 
 ```csharp
 var job = await client.SubmitEmbedAsync("documents", pdfBytes,
@@ -150,11 +169,8 @@ var delivery = await client.GetStorageDeliveryAsync((await client.GetJobAsync(jo
 if (delivery.Status == "failed") await client.RetryStorageDeliveryAsync(delivery.Id);
 ```
 
-Wait for the watermark job to succeed before reading its delivery record;
-it returns `404` until then. With `storage:read`, poll delivery status until
-`stored` or a terminal failure. Upload retries use no additional credits.
-With `storage:write`, manage destinations with `CreateStorageDestinationAsync`,
-`VerifyStorageDestinationAsync`, `UpdateStorageDestinationAsync`, and
-`DeleteStorageDestinationAsync`; `CreateStorageDeliveryAsync` moves an existing asset and
-`DownloadStorageDeliveryAsync` downloads a stored object through Etchv.
-See [delivery states and recovery](/docs/storage#track-and-download-a-delivery).
+After job success, inspect delivery with `storage:read` (earlier reads return `404`). Once `stored`, use `DownloadStorageDeliveryAsync` to download.
+
+With `storage:write` and owner/admin access, `RetryStorageDeliveryAsync` retries failed/cancelled delivery for free. Manage with: `CreateStorageDestinationAsync`, `VerifyStorageDestinationAsync`, `UpdateStorageDestinationAsync`, `DeleteStorageDestinationAsync`, `CreateStorageDeliveryAsync`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
+
+</Details>

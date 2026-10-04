@@ -1,12 +1,8 @@
-Connect a public or private general-purpose Amazon S3 bucket using a
-cross-account IAM role. Etchv uses temporary role credentials; you do not upload
-an AWS access key. See the
-[storage guide](/docs/storage) for delivery status and retention.
+Connect a general-purpose S3 bucket with a cross-account IAM role. Etchv uses temporary credentials; no AWS access key is needed.
 
 ## Create a limited role
 
-Create a role whose name starts with `etchv-storage-`, for example
-`etchv-storage-production`. Limit its permissions to your chosen bucket prefix:
+Name the role with the prefix `etchv-storage-`, such as `etchv-storage-production`. Grant access only to your destination prefix:
 
 ```json
 {
@@ -19,14 +15,11 @@ Create a role whose name starts with `etchv-storage-`, for example
 }
 ```
 
-Use your actual prefix. Etchv does not require `DeleteObject`, `ListBucket` or
-permission to change ACLs. If the bucket’s default encryption uses a customer KMS
-key, grant the role the required `kms:GenerateDataKey` and `kms:Decrypt` permissions
-and allow it in that key’s policy. Etchv honors bucket default encryption.
+Replace the bucket and prefix. `DeleteObject`, `ListBucket` and ACL permissions are unnecessary. For customer-managed KMS encryption, also grant `kms:GenerateDataKey` and `kms:Decrypt`, with access in the key policy.
 
 ## Add the destination
 
-Use [Dashboard storage](/dashboard/storage), or create it with an admin API key:
+Use [Dashboard storage](/dashboard/storage) or an owner/admin key with `storage:write`:
 
 ```sh
 curl -X POST https://api.etchv.com/storage/destinations \
@@ -36,8 +29,7 @@ curl -X POST https://api.etchv.com/storage/destinations \
        "role_arn":"arn:aws:iam::YOUR_ACCOUNT_ID:role/etchv-storage-production"}'
 ```
 
-The response returns a destination `id`, Etchv’s `aws_principal_arn`, and a unique
-`external_id`. Use those exact returned values in the role’s trust policy:
+The response returns `id`, `aws_principal_arn` and a unique `external_id`. Put the exact returned values in your role’s trust policy:
 
 ```json
 {
@@ -51,25 +43,21 @@ The response returns a destination `id`, Etchv’s `aws_principal_arn`, and a un
 }
 ```
 
-The external ID must be unique to this connection. Do not omit it or use a
-wildcard. [AWS explains external IDs and third-party access](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
+Keep the exact external ID condition. It prevents other customers from using your connection. See [AWS third-party role access](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
 
 ## Test and use
 
-Click **Test connection**, or `POST /storage/destinations/{id}/verify`. This writes
-and reads a small probe under the prefix. Fix trust/permissions if it fails, then
-submit `storage_destination_id` with your [watermark request](/docs/storage#select-storage-on-a-request).
+1. Click **Test connection**, or `POST /storage/destinations/{id}/verify`. Etchv writes and reads a probe under your prefix.
+2. Fix any trust or permission error, then verify again.
+3. Pass the destination ID in your [embedding request](/docs/storage#select-storage-on-a-request).
 
-Both private and already-public buckets work. For private buckets, leave S3 Block
-Public Access enabled. For an already-public bucket, set `visibility` to `public`
-when creating the connection to include a direct URL in delivered records. Etchv
-never changes bucket policy or sends `public-read` ACLs.
+| Visibility | Configuration |
+| --- | --- |
+| Private | Keep S3 Block Public Access enabled |
+| Already public | Set `visibility: "public"` to include direct URLs |
 
-Conditional writes protect existing objects. A retry reads an existing object and
-compares its bytes before accepting it as the original successful upload.
-See [S3 conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html).
+Etchv honors default encryption and never changes bucket policy or ACLs. [Conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html) protect existing objects; retries verify their bytes before accepting them.
 
-This release supports commercial AWS regions and official S3 endpoints. S3 Express
-directory buckets, access-point ARNs, arbitrary S3-compatible endpoints and
-per-request bucket overrides are not supported. Create a separate verified
-destination for another bucket.
+<Details title="Supported S3 configurations">
+Commercial AWS regions and official S3 endpoints are supported. S3 Express directory buckets, access-point ARNs, custom S3-compatible endpoints and per-request bucket overrides are not. Create a separate destination for another bucket.
+</Details>
