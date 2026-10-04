@@ -32,7 +32,7 @@ Connection checks use no credits. Keep the original reference record: detection 
 3. **Collect:** On `succeeded`, download the file or read detection JSON.
 4. **Handle failure:** On `failed`, record `request_id` and `error_code`; do not automatically create a new job.
 
-Set a 35-minute workflow deadline; the job’s processing deadline is 30 minutes. Collect results within 24 hours, or use the [asset library](/docs/api/assets) for retained files.
+Image and PDF jobs have a 30-minute processing deadline, so set a 35-minute workflow deadline. Video jobs add 15 seconds per frame, up to 90 minutes. Collect results within 24 hours, or use the [asset library](/docs/api/assets) for retained files.
 
 <Callout title="Retry the same operation with the same key">
 After a timeout, resend identical file, data and options with the original key. Etchv returns the same job without another reservation. Changed inputs return `409`.

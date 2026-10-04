@@ -3,10 +3,10 @@
 <Facts>
   <Fact label="Upload">20 MB · H.264</Fact>
   <Fact label="Marking">Every frame</Fact>
-  <Fact label="CPU cost">1 credit / min*</Fact>
+  <Fact label="CPU cost">1 credit / 24 frames*</Fact>
 </Facts>
 
-*Per started minute, for each embed or detect operation.*
+*To embed, per started 24 frames. Detection is 1 credit per file.*
 
 ## Request
 
@@ -75,15 +75,15 @@ Editing, transcoding or recompression can affect recovery.
 - **Per-frame results:** zero-based `units`. The top-level ID is present only when every frame recovers the same ID.
 - **Retry:** keep the same upload and `Idempotency-Key`. A disconnect does not cancel work.
 
-Follow `Retry-After` when polling. Jobs have a 30-minute deadline; completed
-results last 24 hours. [Retry and recovery details](/docs/api/async#retry-safely).
+Follow `Retry-After` when polling. A video job’s deadline is 30 minutes plus 15
+seconds per frame, up to 90 minutes; completed results last 24 hours. [Retry and recovery details](/docs/api/async#retry-safely).
 
 ## Credits
 
-| Video length | CPU credits per operation |
+| Operation | CPU credits |
 | --- | --- |
-| Up to 60 seconds | 1 |
-| Over 60, up to 120 seconds | 2 |
+| Embed | 1 per started 24 frames: 24 frames cost 1, 25 cost 2, 120 cost 5, 240 cost 10 |
+| Detect | 1 per file, whatever its length |
 
 Embedding and detection are charged separately. Credits are reserved on
 acceptance, settled once on success and refunded on failure. Retries and saved

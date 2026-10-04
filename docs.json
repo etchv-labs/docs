@@ -42,7 +42,7 @@
           "slug": "integrations",
           "file": "integrations/index.mdx",
           "title": "Automate with Etchv",
-          "description": "Use Etchv in Zapier, n8n, and Make workflows."
+          "description": "Use Etchv in Zapier, n8n and Make workflows. Early access."
         },
         {
           "slug": "integrations/zapier",

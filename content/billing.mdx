@@ -1,7 +1,7 @@
 ## Start with a free trial
 
 <Facts>
-  <Fact label="Trial credits">100</Fact>
+  <Fact label="Trial credits">200</Fact>
   <Fact label="Duration">7 days</Fact>
   <Fact label="Payment card">Not required</Fact>
 </Facts>
@@ -45,9 +45,10 @@ detection, in the dashboard and API; unsupported plan access returns `403` befor
 
 | Operation | CPU credits |
 | --- | --- |
-| Image or PDF embed | 1 per file, including its frames/pages/layers |
-| Image or PDF detect | 1 per file, even when no watermark is found |
-| Video embed or detect | 1 per started minute; 61 seconds costs 2 |
+| Image embed | 1 per file, including its frames, pages and layers |
+| PDF embed | 1 per page; an eight-page PDF costs 8 |
+| Video embed | 1 per started 24 frames, about a second; a 120-frame clip costs 5 |
+| Detect, any image, PDF or video | 1 per file, even when no watermark is found |
 | Asset management, saved downloads, job retries | No additional credits |
 
 Embedding and detection are separate charges. Failed operations refund reserved

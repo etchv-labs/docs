@@ -13,8 +13,9 @@
 2. **Keep:** save the returned watermark ID with your original record.
 3. **Detect:** submit a recovered copy and look up its ID.
 
-Etchv embeds a SHA-256 digest of your JSON. Detection recovers the digest, not the
-original record. Editing or recompressing files can affect recovery; test your
+Your watermark ID is a SHA-256 digest of your JSON. Etchv embeds it in images and
+video frames; a PDF page carries a short token that resolves to it. Detection
+recovers the ID, not the original record. Editing or recompressing files can affect recovery; test your
 workflow. A match identifies a copy, not who shared it.
 
 ## Choose your integration
@@ -48,6 +49,6 @@ Choose [sync or async](/docs/api/async); use [webhooks](/docs/api/webhooks) for 
     Optional acceleration on Business and Enterprise.
   </Card>
   <Card href="/docs/billing" title="Plans and credits">
-    Start with 100 credits over seven days. No card required.
+    Start with 200 credits over seven days. No card required.
   </Card>
 </Cards>

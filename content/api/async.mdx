@@ -60,7 +60,7 @@ Use `/watermarks/documents/async` with the same headers and fields. Save the rec
   "operation": "embed",
   "format": "PDF",
   "frame_count": 2,
-  "credits": 1,
+  "credits": 2,
   "attempts": 0,
   "webhook_id": null,
   "asset_id": null,
@@ -118,7 +118,7 @@ not create another charge or webhook event; use explicit webhook redelivery if n
 <Details title="Processing guarantees and retention">
 
 - Up to five processing attempts with backoff, using the original input and ID.
-- Worker crashes recover after lease expiry. Jobs have a 30-minute deadline; expired jobs are finalized and refunded when workers recover.
+- Worker crashes recover after lease expiry. Image and PDF jobs have a 30-minute deadline; video jobs add 15 seconds per frame, up to 90 minutes. Expired jobs are finalized and refunded when workers recover.
 - Verified output, asset records and credit settlement commit together. Failures refund reservations.
 - Job results last **24 hours**; expired retrieval returns `410`. The idempotency key remains recorded.
 - Etchv library downloads last **30 days**; selected customer buckets control output retention. Records remain until deleted. Detection creates no library assets.

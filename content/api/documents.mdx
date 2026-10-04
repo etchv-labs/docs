@@ -3,7 +3,7 @@
 <Facts>
   <Fact label="Upload">20 MB · 8 pages</Fact>
   <Fact label="Output">Selectable PDF</Fact>
-  <Fact label="CPU cost">1 credit / file</Fact>
+  <Fact label="CPU cost">1 credit / page</Fact>
 </Facts>
 
 ## Request
@@ -66,16 +66,17 @@ Each final page must recover the exact ID and meet 35 dB PSNR. Etchv checks two
 rendering engines using a canonical 144 dpi RGB rendering with annotations hidden.
 Two blend textures carry the mark; pages are not flattened.
 
-Embed fonts in source PDFs for consistent rendering. Etchv supplies standard
-substitute fonts, but other viewers may choose different ones. Printing,
+Embed fonts in source PDFs for consistent rendering. Etchv does not add fonts to
+your PDF: its verification render uses standard substitutes, and other viewers
+may choose different ones. Printing,
 re-saving and edits can affect recovery.
 
 </Details>
 
 ## Billing and results
 
-- **Embed:** one CPU credit per PDF, regardless of page count; failures refund the reservation.
-- **Detect:** one CPU credit per PDF. `units` reports each page; the top-level ID is present only when all pages recover the same ID.
+- **Embed:** one CPU credit per page, so an eight-page PDF costs 8; failures refund the reservation.
+- **Detect:** one CPU credit per PDF, whatever its page count. `units` reports each page; the top-level ID is present only when all pages recover the same ID.
 - **Retrieve:** [job results](/docs/api/async) last 24 hours. Same-key retries return saved bytes without another charge.
 
 ## SDKs
