@@ -121,7 +121,7 @@ not create another charge or webhook event; use explicit webhook redelivery if n
 - Worker crashes recover after lease expiry. Image and PDF jobs have a 30-minute deadline; video jobs add 15 seconds per frame, up to 90 minutes. Expired jobs are finalized and refunded when workers recover.
 - Verified output, asset records and credit settlement commit together. Failures refund reservations.
 - Job results last **24 hours**; expired retrieval returns `410`. The idempotency key remains recorded.
-- Etchv library downloads last **30 days**; selected customer buckets control output retention. Records remain until deleted. Detection creates no library assets.
+- Etchv keeps library files for up to **1 year** while your subscription is active (30 days on the trial); selected customer buckets control output retention. Records remain until deleted. Detection creates no library assets.
 - Encrypted processing copies become eligible for deletion after **7 days**. Job/billing metadata remain for accounting and replay protection; original embedding JSON is not retained.
 
 </Details>

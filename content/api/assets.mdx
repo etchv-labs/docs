@@ -1,10 +1,12 @@
 Browse, download and organize your files in the [asset library](/dashboard/assets). Every successful embed creates two linked records: the original upload and the watermarked result. Detection creates no assets.
 
 <Facts>
-  <Fact label="Files">30 days on Etchv</Fact>
+  <Fact label="Files">Up to 1 year on Etchv*</Fact>
   <Fact label="Records">Until you delete them</Fact>
   <Fact label="Credits">Free to manage</Fact>
 </Facts>
+
+*While your subscription is active. 30 days on the free trial.*
 
 ## List assets
 
@@ -106,9 +108,11 @@ Send every field you want to keep. `{}` or `null` clears metadata. Editing a rec
 | Storage | Download window |
 | --- | --- |
 | Job result | 24 hours |
-| Etchv-hosted asset | 30 days from completion |
+| Etchv-hosted asset | 1 year from completion while your subscription is active; 30 days on the free trial |
 | Customer bucket | Your bucket’s retention policy |
 | Asset record | Until deleted, even after the file expires |
+
+If a subscription ends, its files stay for 30 more days, and never past their first year. Subscribing again in that time restores the full year. `file_expires_at` always shows the file’s current date, so read it instead of computing one.
 
 Embedding responses expose `X-Asset-ID` and `X-Source-Asset-ID`; job status exposes `asset_id` and `source_asset_id`. Replays create no extra assets or charges. Asset creation, job completion and credit settlement commit together.
 
@@ -118,7 +122,7 @@ After an Etchv file expires, `file_available` is `false` and `download_url` is `
 
 Customer-stored results include `storage_provider`, `storage_destination_id`, `storage_delivery_id` and `storage_status`. Once `stored`, `file_expires_at` is `null`; the asset download endpoint reads from your bucket. Access is checked on download, so a removed object or revoked connection can still fail.
 
-`staging_expires_at` shows the upload recovery window; `staging_deleted_at` confirms Etchv’s staged output was removed. Failed delivery remains visible and retryable. Originals stay on Etchv for 30 days.
+`staging_expires_at` shows how long a delivery can be retried, up to 30 days; `staging_deleted_at` confirms Etchv’s staged output was removed. A failed delivery remains visible and retryable, and its result stays on Etchv meanwhile. Originals stay on Etchv under the retention above.
 
 Connecting a bucket does not move existing files. Use **Move to my storage** on an available Etchv-hosted result. Each result has one destination. See [storage](/docs/storage).
 

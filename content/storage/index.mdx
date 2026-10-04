@@ -4,10 +4,12 @@ Keep files on Etchv with no setup, or deliver watermarked results to your own cl
 
 | Location | File retention |
 | --- | --- |
-| Etchv · default | 30 days |
+| Etchv · default | Up to 1 year while your subscription is active; 30 days on the trial |
 | Your S3, GCS or Azure destination | Your bucket’s lifecycle policy |
 
-Both appear in the asset library. Records remain until deleted; original uploads stay on Etchv for 30 days regardless of the output destination.
+Both appear in the asset library. Records remain until deleted; original uploads stay on Etchv regardless of the output destination.
+
+If a subscription ends, Etchv keeps its files for 30 more days, and never past their first year. Subscribing again in that time restores the full year. Each asset’s `file_expires_at` shows its current date.
 
 Connecting a bucket does not set a default or move existing files. Select it per request, or use **Move to my storage** on an available Etchv-hosted result. Each result has one destination; moving between customer buckets or back to Etchv is not supported.
 
@@ -61,7 +63,7 @@ The default name is the output asset ID plus its native extension. Prefix `etchv
 A binary response or `watermark.embed.succeeded` confirms watermarking. Delivery status `stored` or `storage.delivery.succeeded` confirms the copy is in your bucket.
 </Callout>
 
-Until delivery, downloads may use staging. Failed uploads remain visible against the chosen destination; staged output is recoverable for up to 30 days. `staging_deleted_at` confirms cleanup. Delivered assets have `file_expires_at: null` because your bucket controls retention.
+Until delivery, downloads may use staging. Failed uploads remain visible against the chosen destination and can be retried for up to 30 days; until one succeeds, the result stays on Etchv. `staging_deleted_at` confirms cleanup. Delivered assets have `file_expires_at: null` because your bucket controls retention.
 
 ## Track and download a delivery
 
@@ -125,7 +127,7 @@ A result’s destination and delivery key are fixed. Repeating the same pair and
 
 ## Retry, retention and deletion
 
-Up to 10 automatic attempts run over about 22 hours. While staged output remains available (up to 30 days), you can start up to 10 manual retry cycles without another watermarking charge.
+Up to 10 automatic attempts run over about 22 hours. For up to 30 days, you can start up to 10 manual retry cycles without another watermarking charge.
 
 | Error code | Check |
 | --- | --- |

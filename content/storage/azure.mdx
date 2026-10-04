@@ -46,7 +46,7 @@ Etchv does not change anonymous access settings or expose the write-capable toke
 
 1. Check `credential_expires_at` in the API or dashboard. It is the earlier of SAS and delegation-key expiry.
 2. Replace `credentials` with `PATCH /storage/destinations/{id}`, or **Storage → Details → Replace credentials**.
-3. Test the connection again. Retry exhausted deliveries while staged output remains available, up to 30 days.
+3. Test the connection again. Retry exhausted deliveries within 30 days.
 
 Expired or not-yet-valid tokens cannot be saved. Expired destinations cannot receive new jobs, and Etchv downloads need valid credentials even when the Azure file still exists.
 
