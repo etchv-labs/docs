@@ -8,7 +8,7 @@
 
 ## Request
 
-Use a key with `watermarks:detect`. Send encoded image bytes as multipart `file`.
+Use a key with `watermarks:detect`. Send the image file as the multipart `file` field.
 
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
@@ -18,32 +18,33 @@ curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
 
 ## Response
 
-Returns `200` JSON and an `X-Request-ID` header. Compare the recovered ID with
-the one saved when you embedded the file.
+Returns `200` JSON and an `X-Request-ID` header. Compare the `watermark_id` it found
+with the watermark ID you saved when you embedded the file.
 
 | Field | Meaning |
 | --- | --- |
-| `watermarked` | Every frame/page/composite recovered the same watermark |
+| `watermarked` | The same watermark was found in every frame, page or combined layer image |
 | `watermark_id` | Recovered 64-character hex ID, or `null` |
-| `confidence` | Lowest per-unit decoded-bit certainty, from 0 to 1 |
-| `units` | Per-unit `index`, `watermarked`, `confidence` and `watermark_id`; indexes start at zero |
+| `confidence` | How certain the read was, from 0 to 1, taken from the least certain unit |
+| `units` | For each frame or page (unit): `index`, `watermarked`, `confidence` and `watermark_id`; indexes start at zero |
 
 ## Interpret the result
 
-- **Matching ID:** look up the associated record in your system.
-- **Partial or mixed IDs:** inspect `units`. The top-level result is `watermarked: false` with a null ID.
-- **No mark found:** a completed, billable detection. It does not establish whether an image is AI-generated.
+- **Watermark matches:** look up the linked record in your system.
+- **Watermark in only some units, or different watermarks:** check `units`. The top-level result is `watermarked: false` with a null `watermark_id`.
+- **No watermark found:** the detection still completed and is billed. It does not tell you whether an image is AI-generated.
 
-Confidence is not a guarantee of exact recovery after edits. A match identifies
-a copy, not who shared it. Detection does not return your original JSON or create
+High confidence does not guarantee the exact watermark is recovered after edits. A match
+identifies a copy, not who shared it. Detection does not return your original JSON or create
 an asset-library record.
 
 <Details title="Recovery from edited or photographed copies">
 
-If a decoded ID is within 48 of 256 bits of an issued ID retained on one of your
-organization’s watermarked assets, Etchv returns that issued ID. Only your
-organization’s records are compared. Otherwise it returns the decoded ID, which
-may match no record. Test the edits your workflow produces.
+A watermark ID is 256 bits. Etchv compares the watermark it reads with the ones it
+issued and still keeps on your Organization’s watermarked assets. If one differs by 48
+bits or fewer, Etchv returns that issued watermark ID. Only your Organization’s records
+are compared. Otherwise it returns the watermark it read, which may match no record.
+Test the edits your workflow produces.
 
 </Details>
 
@@ -57,5 +58,5 @@ may match no record. Test the edits your workflow produces.
 | GPU | Add `accelerator=gpu`; Business/Enterprise, 3× credits when GPU runs. [GPU guide](/docs/api/gpu) |
 
 Storage options are for embedding only. Large animations take longer because
-every frame is inspected; a successful image detection still costs one CPU credit
+every frame is checked. A successful image detection still costs one CPU credit
 for the whole file. [Image limits](/docs/api/errors#image-limits).

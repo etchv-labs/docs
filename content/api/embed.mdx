@@ -20,21 +20,21 @@ curl --fail-with-body https://api.etchv.com/watermarks/images \
   --output response-body
 ```
 
-Check the status in `response-headers.txt` before saving the body as an image.
-The [SDKs](/docs/sdks/node) handle pending jobs automatically.
+Check the status code in `response-headers.txt` before you save the body as an image.
+The [SDKs](/docs/sdks/node) wait for pending jobs for you.
 
 | Form field | Value |
 | --- | --- |
 | `file` · required | Encoded image bytes. Maximum 50 MB and 40 MP across all frames/pages |
-| `data` · required | A non-empty JSON object, sent as a string. Use a reference to your delivery record |
+| `data` · required | A non-empty JSON object, sent as a string. Use a reference to your own delivery record |
 
-Let your HTTP client set the multipart boundary.
+Let your HTTP client set the multipart boundary (the separator between form fields).
 
 ## Request options
 
 | Option | Use it for |
 | --- | --- |
-| `Idempotency-Key` header | Safe retries. Use 8–128 letters, digits, hyphens or underscores; keep the same key and input for a retry |
+| `Idempotency-Key` header | Safe retries with an [idempotency key](/docs/api/async#retry-safely). Use 8–128 letters, digits, hyphens or underscores; keep the same key and input for a retry |
 | `accelerator` query | `cpu` by default; `gpu` on Business/Enterprise costs 3× credits when GPU runs. [GPU guide](/docs/api/gpu) |
 | `storage_destination_id` query | Send the result to a verified customer bucket. Omit for included Etchv storage |
 | `storage_key` query | Optional URL-encoded filename under that destination’s prefix. [Storage guide](/docs/storage) |
@@ -45,29 +45,29 @@ Let your HTTP client set the multipart boundary.
 | Endpoint | Response |
 | --- | --- |
 | `POST /watermarks/images` | Waits up to 20 seconds: `200` file or `202` job receipt |
-| `POST /watermarks/images/async` | `202` receipt after validation and durable acceptance |
+| `POST /watermarks/images/async` | `202` receipt once the upload is checked and safely stored |
 
-For `202`, follow `result_url` with your API key and respect `Retry-After`.
+For `202`, fetch `result_url` with your API key. Wait as long as `Retry-After` says between checks.
 [Full job workflow](/docs/api/async#retrieve-a-pending-result-either-mode).
 
 ## Response
 
-**`200` contains the verified image.** Save its bytes directly using the filename
+**`200` contains the checked, watermarked image.** Save its bytes as they are, using the filename
 in `Content-Disposition`. **`202` contains JSON**, not a finished file.
 
 | Header | Keep it for |
 | --- | --- |
-| `X-Watermark-ID` | Looking up your record; a 64-character SHA-256 digest |
+| `X-Watermark-ID` | Looking up your record. The watermark ID is a 64-character SHA-256 digest (a fixed-length fingerprint of your data) |
 | `X-Asset-ID`, `X-Source-Asset-ID` | Finding the output and original in the [asset library](/docs/api/assets) |
 | `X-Request-ID` | Recovery and support |
 | `Content-Type`, `Content-Disposition` | Native MIME type and suggested filename |
 | `X-Etchv-Accelerator` | Whether CPU or GPU ran |
 | `X-Storage-Delivery-ID` | Tracking delivery when you selected customer storage |
 
-<Callout title="Keep the record behind the ID">
-  Etchv hashes your JSON after sorting keys and removing insignificant whitespace.
-  Identical canonical data gives the same ID. Detection returns that ID, not the
-  original JSON. Store the ID alongside your record.
+<Callout title="Keep the record behind the watermark">
+  Etchv sorts your JSON keys, removes extra spaces, then hashes the result into the
+  watermark ID. The same data always gives the same watermark. Detection returns the
+  watermark ID, not your original JSON. Save the watermark ID with your record.
 </Callout>
 
 ## Native format preservation
@@ -79,7 +79,7 @@ in `Content-Disposition`. **`202` contains JSON**, not a finished file.
 | TIFF | Every page |
 | PSD / PSB | Original layers plus two editable watermark layers |
 
-File signatures determine the format. High-bit-depth and CMYK inputs are rejected.
+Etchv reads the format from the file’s bytes, not its name. High-bit-depth and CMYK images are rejected.
 [Frame, page and layer limits](/docs/api/errors#image-limits).
 
 <Details title="Encoding, color and transparency">
@@ -88,30 +88,31 @@ File signatures determine the format. High-bit-depth and CMYK inputs are rejecte
 - Palette and grayscale inputs may expand to RGB. GIF frames must be at most 1 MP.
 - RGB ICC profiles, EXIF and resolution are preserved where supported; other metadata is not guaranteed.
 - RGBA transparency is preserved. Verification composites onto white; fully transparent frames cannot carry a watermark.
-- Encoding settings and file bytes may change. Final visible-image quality must be at least 35 dB PSNR, including encoding loss.
+- Encoding settings and file bytes may change. The final image must score at least 35 dB PSNR (a standard measure of how close it looks to the original), including loss from encoding.
 
 </Details>
 
 <Details title="Photoshop file requirements">
 
-Use 8-bit RGB PSD/PSB files with an opaque, faithfully renderable composite and a
-stored merged preview. Unsupported effects are rejected rather than flattened.
-Keep both added watermark layers visible; editing or removing them can affect recovery.
+Use 8-bit RGB PSD/PSB files. The combined image must be opaque and render correctly,
+and the file must include a saved merged preview. Files with unsupported effects are
+rejected, not flattened. Keep both added watermark layers visible. Editing or removing
+them can affect recovery.
 
 </Details>
 
 <Details id="output-verification" title="How Etchv verifies the delivered file">
 
-Etchv decodes the final serialized output and checks the exact ID in every
-frame, TIFF page or layered composite. Dimensions must remain unchanged.
-A file that fails verification returns `422`; failed jobs refund reserved credits.
+Etchv opens the final output file and detects the watermark in every frame, TIFF
+page or combined layer image. It must find the exact watermark each time, and the
+dimensions must not change. A file that fails this check returns `422`. Failed jobs refund the credits held for them.
 
 </Details>
 
 ## <span id="durable-execution-and-duplicate-requests" /><span id="retention" /><span id="choose-where-results-are-stored" />Retries and storage
 
-Reuse the same idempotency key after a timeout. Accepted work continues if you
-disconnect; replaying it does not create another charge.
+After a timeout, retry with the same idempotency key. Accepted work keeps running if you
+disconnect, and a retry does not add a charge.
 
 <Cards>
   <Card href="/docs/api/async#retry-safely" title="Retry and resume">

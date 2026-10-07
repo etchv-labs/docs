@@ -1,4 +1,4 @@
-Connect an Azure Blob container with a container-scoped SAS token. Etchv delivers verified files without changing their format or your container’s access policy.
+Connect an Azure Blob container with a container-scoped SAS token. A SAS (shared access signature) token is a signed string that grants limited access to one container. Etchv delivers verified files without changing their format or your container’s access policy.
 
 ## Create a container SAS
 
@@ -11,7 +11,7 @@ Use a dedicated container in a standard Azure public-cloud account.
 | Protocol | HTTPS only: `spr=https` |
 | Expiry | A date within your rotation policy |
 
-Prefer a user-delegation SAS. Its validity is limited by the delegation key and cannot exceed seven days. Account keys, connection strings, account-wide SAS, URLs and private endpoints are unsupported. See [Microsoft’s SAS overview](https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview).
+Use a user-delegation SAS when you can. It is valid only as long as its delegation key, and never longer than seven days. Etchv does not support account keys, connection strings, account-wide SAS, URLs or private endpoints. See [Microsoft’s SAS overview](https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview).
 
 ## Connect and verify
 
@@ -29,26 +29,26 @@ Choose **Azure Blob Storage** in [Dashboard storage](/dashboard/storage), or sen
 }
 ```
 
-Supply only the SAS query string, optionally starting with `?`. Click **Test connection**, or call `POST /storage/destinations/{id}/verify`. Etchv checks write and read access; tokens are encrypted and never returned in responses or URLs.
+Send only the SAS query string. It may start with `?`. Click **Test connection**, or call `POST /storage/destinations/{id}/verify`. Etchv checks write and read access. Tokens are encrypted and never returned in responses or URLs.
 
 ## Store and retrieve
 
-Pass the destination ID in an [embedding request](/docs/storage#select-storage-on-a-request). Etchv writes a block blob and never overwrites different bytes.
+Pass the destination ID in an [embedding request](/docs/storage#select-storage-on-a-request). Etchv writes a block blob (Azure’s standard file type). It never overwrites a file that holds different bytes.
 
 | Visibility | Returned location |
 | --- | --- |
 | Private | `azure://account/container/key`; download with Azure credentials or Etchv’s authenticated proxy |
 | Already public | Also includes `https://account.blob.core.windows.net/container/key`, without a SAS |
 
-Etchv does not change anonymous access settings or expose the write-capable token to browsers. Your container controls retention.
+Etchv does not change anonymous access settings. It never sends the token that can write to your container to a browser. Your container controls how long files are kept.
 
 ## Renew access before expiry
 
-1. Check `credential_expires_at` in the API or dashboard. It is the earlier of SAS and delegation-key expiry.
+1. Check `credential_expires_at` in the API or dashboard. It shows whichever expires first: the SAS or the delegation key.
 2. Replace `credentials` with `PATCH /storage/destinations/{id}`, or **Storage → Details → Replace credentials**.
-3. Test the connection again. Retry exhausted deliveries within 30 days.
+3. Test the connection again. Within 30 days, retry any deliveries that ran out of attempts.
 
-Expired or not-yet-valid tokens cannot be saved. Expired destinations cannot receive new jobs, and Etchv downloads need valid credentials even when the Azure file still exists.
+You can't save a token that has expired or is not valid yet. An expired destination cannot receive new jobs. Downloads through Etchv also need valid credentials, even when the file still exists in Azure.
 
 <Details title="Generate a user-delegation SAS with Azure CLI">
 
@@ -63,8 +63,8 @@ az storage container generate-sas \
   --expiry YOUR_UTC_EXPIRY --output tsv
 ```
 
-Grant blob read/write access on the container and delegation-key access on the storage account. A container-scoped custom role plus **Storage Blob Delegator** avoids general storage administration. Keep tokens out of logs and source control. See [Microsoft’s user-delegation guide](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-cli).
+Grant blob read/write access on the container and delegation-key access on the storage account. A custom role scoped to the container, plus **Storage Blob Delegator**, avoids granting general storage admin rights. Keep tokens out of logs and source control. See [Microsoft’s user-delegation guide](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-cli).
 
-Account-key authentication can remain disabled. Your pipeline can use GitHub OIDC to generate replacements, but the Etchv connection still uses the SAS you supply; direct Azure workload identity is not supported.
+Account-key authentication can stay disabled. Your pipeline can use GitHub OIDC to create new tokens. The Etchv connection still uses the SAS you supply. Direct Azure workload identity is not supported.
 
 </Details>

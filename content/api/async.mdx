@@ -1,16 +1,16 @@
-Both modes use the same processing, verification and credit rules. Choose how
-your application receives the result.
+Sync and async requests watermark files the same way. They use the same checks
+and cost the same credits. The only difference is how your app gets the result.
 
 ## Choose an endpoint
 
 | Mode | What happens |
 | --- | --- |
-| **Sync** · standard endpoint | Waits for the result; returns `202` if watermarking or video detection continues beyond 20 seconds |
-| **Async** · append `/async` | Returns a `202` receipt after upload validation and durable acceptance. Poll or use a webhook |
+| **Sync** · standard endpoint | Waits for the result. Returns `202` if watermarking or video detection takes longer than 20 seconds |
+| **Async** · append `/async` | Returns a `202` receipt once the upload is checked and safely stored. Poll for the result or use a webhook |
 
-Image and PDF sync detection return JSON directly without job continuation.
-Validation, upload and download time add to processing time; async acceptance
-still waits for validation and storage of the upload.
+Sync detection of images and PDFs always returns JSON directly. It never turns
+into a pending job. Upload, checking and download time add to processing time.
+An async request still waits until the upload is checked and stored.
 
 <Details title="All six endpoint pairs">
 
@@ -23,9 +23,9 @@ still waits for validation and storage of the upload.
 | Embed video | `POST /watermarks/videos` |
 | Detect video | `POST /watermarks/videos/detect` |
 
-Append `/async` to any endpoint above. There is no `/sync` suffix.
-Use `watermarks:embed` or `watermarks:detect` as appropriate. Fields, format limits
-and credit prices are the same in either mode.
+Add `/async` to the end of any endpoint above. There is no `/sync` suffix.
+Use a key with `watermarks:embed` or `watermarks:detect` to match the operation.
+Fields, format limits and credit prices are the same in both modes.
 
 </Details>
 
@@ -40,16 +40,16 @@ curl --fail-with-body https://api.etchv.com/watermarks/documents \
   -D response-headers.txt --output response-body
 ```
 
-- **`200`:** save the file with its `Content-Disposition` filename and keep `X-Watermark-ID`.
-- **`202`:** read the JSON receipt and collect `result_url`. Do not save this body as media.
-- **Error:** invalid input, endpoint IDs or unavailable credits can prevent job acceptance.
+- **`200`:** save the file with its `Content-Disposition` filename. Keep the watermark ID from `X-Watermark-ID`.
+- **`202`:** read the JSON receipt and fetch `result_url` later. Do not save this body as a media file.
+- **Error:** the job can be refused for invalid input, a webhook or storage destination that is unknown, disabled or unverified, or too few credits.
 
-SDK embed methods follow pending jobs automatically.
+SDK embed methods wait for pending jobs for you.
 
 ## Watermark a file asynchronously
 
-Use `/watermarks/documents/async` with the same headers and fields. Save the receipt’s
-`request_id`, `status_url` and `result_url`.
+Use `/watermarks/documents/async` with the same headers and fields. The response is
+a receipt. Save its `request_id`, `status_url` and `result_url`.
 
 <Details id="async-acceptance-response" title="Example acceptance receipt">
 
@@ -72,25 +72,26 @@ Use `/watermarks/documents/async` with the same headers and fields. Save the rec
 }
 ```
 
-`Location` points to status. URLs are relative to `https://api.etchv.com` and require
-a key from the same organization with the matching operation scope.
-Receipts also report requested/actual accelerators and selected storage when applicable.
+The `Location` header points to the status URL. URLs are relative to
+`https://api.etchv.com`. To use them, you need a key from the same Organization
+with the matching scope. Receipts also show the accelerator you asked for, the one
+that ran, and any storage you selected.
 
 </Details>
 
 ## <span id="if-a-synchronous-request-takes-longer" />Retrieve a pending result (either mode)
 
-1. GET `status_url` with your API key. Follow `Retry-After`: 6 seconds on Trial/Launch, 2 seconds on other plans.
-2. Keep waiting for `queued`, `running` or `retrying`.
-3. On `succeeded`, GET `result_url`: embedding returns media; detection returns JSON.
-4. On `failed`, record `request_id` and `error_code`. Reserved credits are refunded.
+1. GET `status_url` with your API key. Wait as long as `Retry-After` says: 6 seconds on Trial/Launch, 2 seconds on other plans.
+2. If the status is `queued`, `running` or `retrying`, keep waiting.
+3. On `succeeded`, GET `result_url`. Embedding returns the media file; detection returns JSON.
+4. On `failed`, record `request_id` and `error_code`. Credits held for the job are refunded.
 
-A successful detection may report `watermarked: false`.
+A detection can succeed and still report `watermarked: false`, meaning no watermark was found.
 
 ## Receive an async webhook instead of polling
 
-Create an enabled [webhook endpoint](/docs/api/webhooks), save its signing secret,
-and add its ID to the async request:
+Create an enabled [webhook endpoint](/docs/api/webhooks) and save its signing secret.
+Then pass the endpoint’s `webhook_id` in the async request:
 
 ```sh
 curl "https://api.etchv.com/watermarks/images/async?webhook_id=$ETCHV_WEBHOOK_ID" \
@@ -100,41 +101,46 @@ curl "https://api.etchv.com/watermarks/images/async?webhook_id=$ETCHV_WEBHOOK_ID
   --form-string 'data={"delivery":"delivery_001"}'
 ```
 
-Only the selected endpoint receives this job’s terminal event. Webhooks are optional.
+Only the endpoint you select gets this job’s final event. Webhooks are optional.
 
 ## Retry safely
+
+An idempotency key is a value you choose and send in the `Idempotency-Key` header.
+If a request is sent twice with the same key and the same inputs, Etchv runs it
+only once. The retry gets the first job back instead of a second job and a second
+charge. The same key with different inputs returns `409`.
 
 | Situation | Action |
 | --- | --- |
 | Timeout or lost response | Repeat the same file, data, operation and options with the same `Idempotency-Key` |
 | Same key, changed input/options | `409`; use a new key for a new operation |
-| Async replay | Returns a `202` receipt for the existing job, even if finished. Inspect its status |
-| Terminal failure | Same-key replay returns the failure. Use a new key for an intentional new attempt |
+| Async replay | Returns a `202` receipt for the existing job, even if it has finished. Check its status |
+| Final failure | A retry with the same key returns the same failure. Use a new key to try again on purpose |
 
-Persist your key before uploading: 8–128 letters, digits, hyphens or underscores.
-An accepted job continues after disconnection. Retries and result retrieval do
-not create another charge or webhook event; use explicit webhook redelivery if needed.
+Save your key before you upload. It must be 8–128 letters, digits, hyphens or underscores.
+An accepted job keeps running if you disconnect. Retries and result downloads do
+not add a charge or send another webhook event. To get an event again, ask for a webhook redelivery.
 
 <Details title="Processing guarantees and retention">
 
-- Up to five processing attempts with backoff, using the original input and ID.
-- Worker crashes recover after lease expiry. Image and PDF jobs have a 30-minute deadline; video jobs add 15 seconds per frame, up to 90 minutes. Expired jobs are finalized and refunded when workers recover.
-- Verified output, asset records and credit settlement commit together. Failures refund reservations.
-- Job results last **24 hours**; expired retrieval returns `410`. The idempotency key remains recorded.
-- Etchv keeps library files for up to **1 year** while your subscription is active (30 days on the trial); selected customer buckets control output retention. Records remain until deleted. Detection creates no library assets.
-- Encrypted processing copies become eligible for deletion after **7 days**. Job/billing metadata remain for accounting and replay protection; original embedding JSON is not retained.
+- Up to five processing attempts, with a growing wait between them. Each attempt uses the original input and the same watermark.
+- If a worker crashes, another picks up the job once the first worker’s claim expires. Image and PDF jobs have a 30-minute deadline. Video jobs add 15 seconds per frame, up to 90 minutes. Jobs past their deadline are closed and refunded when workers recover.
+- The checked output, asset records and credit charge are saved together, or not at all. A failure refunds the credits held for the job.
+- Job results last **24 hours**. After that, a download returns `410`. The idempotency key stays on record.
+- Etchv keeps library files for up to **1 year** while your subscription is active (30 days on the trial). If you choose your own bucket, your bucket controls how long output is kept. Records stay until deleted. Detection adds nothing to the library.
+- Encrypted processing copies become due for deletion after **7 days**. Job and billing metadata stay for accounting and to block repeated jobs. The original embedding JSON is not kept.
 
 </Details>
 
 ## Try either mode in the dashboard
 
 In **Watermark media** or **Detect watermark**, select **Request mode**.
-Sync follows continuation automatically. Async shows a receipt; use **Check result**
-later or select a webhook. Copyable examples follow your chosen mode.
+Sync waits for pending jobs for you. Async shows a receipt. Use **Check result**
+later or select a webhook. The copyable code examples match the mode you choose.
 
 ## SDKs
 
-Regular methods wait; submission methods return a receipt without polling.
+Regular methods wait for the result. Submit methods return a receipt right away and do not poll.
 
 | SDK | Submit embed / detection |
 | --- | --- |
@@ -143,9 +149,9 @@ Regular methods wait; submission methods return a receipt without polling.
 | [Go](/docs/sdks/go) | `SubmitEmbed` / `SubmitDetection` |
 | [C#](/docs/sdks/csharp) | `SubmitEmbedAsync` / `SubmitDetectionAsync` |
 
-In C#, `Async` denotes nonblocking client I/O; **Submit** chooses a server-side job.
+In C#, `Async` in a method name means the call does not block your thread. **Submit** is what starts a background job on the server.
 
 ## Choose where results are stored
 
-Embedding accepts `storage_destination_id` and optional `storage_key` queries.
-Delivery retries reuse verified bytes without another charge. [Storage options](/docs/storage).
+Embedding accepts the `storage_destination_id` query and an optional `storage_key` query.
+Delivery retries reuse the already checked file and do not add a charge. [Storage options](/docs/storage).

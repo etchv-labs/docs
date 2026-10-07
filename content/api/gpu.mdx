@@ -1,4 +1,4 @@
-Request GPU processing for any embedding or detection endpoint on Business or Enterprise. The output format, watermark ID and verification are the same as CPU processing.
+On Business or Enterprise plans, you can ask any embedding or detection endpoint to run on a GPU (a graphics processor that can speed up the work). The output format, the watermark and the output check are the same as on CPU.
 
 <Facts>
   <Fact label="Default">CPU</Fact>
@@ -27,15 +27,15 @@ curl --fail-with-body "https://api.etchv.com/watermarks/videos/async?accelerator
 | [C#](/docs/sdks/csharp) | `new RequestOptions(Accelerator: Accelerator.Gpu)` |
 | [Java](/docs/sdks/java) | `options.withAccelerator(EtchvClient.Accelerator.GPU)` |
 
-The dashboard, [MCP](/docs/mcp) and [automation integrations](/docs/integrations) offer the same choice. Gains vary by file: decoding and encoding still use CPU. See [performance benchmarks](https://benchmarks.etchv.com/performance).
+The dashboard, [MCP](/docs/mcp) and [automation integrations](/docs/integrations) offer the same choice. How much faster a GPU is depends on the file, because reading and writing the file still run on CPU. See [performance benchmarks](https://benchmarks.etchv.com/performance).
 
 ## Credits and fallback
 
-Etchv reserves 3× the normal credits. If processing falls back to CPU, it charges the normal amount and releases the difference. Failed operations release the full reservation.
+Etchv holds 3× the normal credits when the request starts. If the work runs on CPU instead, Etchv charges the normal amount and releases the rest. If the operation fails, all held credits are released.
 
 ## GPU readiness
 
-An active Business or Enterprise workspace keeps GPU capacity warm. Additional capacity can take a few minutes to start; requests run on CPU while it starts.
+An active Business or Enterprise workspace keeps GPU capacity running and ready (“warm”). Extra capacity can take a few minutes to start. Requests run on CPU while it starts.
 
 ### Check readiness
 
@@ -62,9 +62,9 @@ curl --fail-with-body -X POST "https://api.etchv.com/accelerators/gpu/wake" \
   -d '{"webhook_id":"wh_0123456789abcdef0123456789abcdef"}'
 ```
 
-Waking uses no credits and requires Business or Enterprise. It keeps capacity warm for 15 minutes after readiness; ongoing GPU work keeps it active. Waking again extends that window.
+Waking costs no credits and needs a Business or Enterprise plan. Once ready, the GPU stays warm for 15 minutes. GPU work in progress keeps it running longer. Waking it again extends the 15 minutes.
 
-The optional `webhook_id` receives [`accelerator.ready`](/docs/api/webhooks#events), immediately if already ready. Otherwise poll readiness. Both endpoints return `accelerator`, `status`, `warm_until` and `ready_at`.
+If you pass the optional `webhook_id`, that endpoint receives [`accelerator.ready`](/docs/api/webhooks#events). It is sent right away if the GPU is already ready. Without a webhook, poll the readiness endpoint. Both endpoints return `accelerator`, `status`, `warm_until` and `ready_at`.
 
 ## See which accelerator ran
 

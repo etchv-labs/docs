@@ -1,4 +1,4 @@
-Python 3.14. Fully typed; import `etchv` from the `etchv-sdk` package. MIT licensed.
+Needs Python 3.14. Fully typed. Install the `etchv-sdk` package, then import `etchv`. MIT licensed.
 
 ## Install
 
@@ -27,7 +27,7 @@ with Etchv(os.environ["ETCHV_API_KEY"]) as client:
     print(detection.watermark_id, detection.confidence)
 ```
 
-`check_api_key` checks credentials for free. Write output bytes without re-encoding.
+`check_api_key` checks your key and uses no credits. Save the output bytes exactly as returned; don't re-encode them.
 
 ## Documents and video
 
@@ -37,9 +37,9 @@ with Etchv(os.environ["ETCHV_API_KEY"]) as client:
 | [PDFs](/docs/api/documents) | `embed_document` / `detect_document` |
 | [Videos](/docs/api/videos) | `embed_video` / `detect_video` |
 
-Native output is in `result.image` for every media type. Embedding also returns `watermark_id`, `request_id`, `content_type`, `filename`, `asset_id`, `source_asset_id` and `storage_delivery_id`.
+For every media type, the watermarked file is in `result.image`, in its original format. Embedding also returns `watermark_id`, `request_id`, `content_type`, `filename`, `asset_id`, `source_asset_id` and `storage_delivery_id`.
 
-Detection returns the ID, confidence and per-frame/page results—not the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
+Detection returns the watermark it found, a confidence score and results for each page or frame. It does not return the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
 
 <Details title="Client configuration">
 
@@ -52,24 +52,24 @@ Detection returns the ID, confidence and per-frame/page results—not the origin
 | `transport` | Optional HTTPX transport |
 | Media `filename`, `idempotency_key` | File name and stable retry key |
 
-Use a context manager to close the client. Run later recipes inside the same `with` block or open another client.
+Use a `with` block (a context manager) so the client closes when you are done. Run the later examples inside the same `with` block, or open another client.
 
 </Details>
 
 ## Errors and recovery
 
-Embedding and video detection retry and poll automatically; image/PDF detection does not. Save an idempotency key before uploading to recover across restarts.
+Embedding and video detection retry and check for results automatically. Image and PDF detection do not. Save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice) before uploading. Then you can recover the request even if your app restarts.
 
 | Situation | Action |
 | --- | --- |
-| Client timeout | The accepted job continues; resume or resend identical inputs with the same key |
+| Client timeout | The accepted job keeps running. Resume it, or resend the same inputs with the same key |
 | Resume a job | `get_embed_result(request_id)` / `get_detection_result(request_id)` |
-| Changed inputs | Use a new key; reusing one returns `409` |
+| Changed inputs | Use a new key. Reusing the old key returns `409` |
 | Collect a saved result | Within 24 hours; see [retention](/docs/api/assets#files-and-records) |
 
 <Details title="Error types and handling">
 
-`EtchvError` exposes `status_code`, `detail` and `request_id`. `DeadlineExceededError` uses status `0` and includes recovery identifiers.
+`EtchvError` exposes `status_code`, `detail` and `request_id`. `DeadlineExceededError` uses status `0` and includes the identifiers you need to recover the request.
 
 Typed errors: `AuthenticationError` (401), `PaymentRequiredError` (402), `PermissionDeniedError` (403), `NotFoundError` (404), `ConflictError` (409), `GoneError` (410) and `RateLimitError` (429). Other statuses raise `EtchvError`.
 
@@ -106,15 +106,15 @@ for item in page["items"]:
 # Pass cursor=page["next_cursor"] with the same filters for the next page.
 ```
 
-Edits replace metadata and require the current version; reconcile `409` conflicts. `delete_asset` / `delete_assets` delete one asset or 1–50 atomically. [Asset fields, filters and retention](/docs/api/assets).
+An edit replaces all metadata and must send the asset’s current version. A `409` means the asset changed since you read it; reload and resolve the conflict. `delete_asset` deletes one asset. `delete_assets` deletes 1–50 at once: either all are deleted or none are. [Asset fields, filters and retention](/docs/api/assets).
 
 </Details>
 
 ## Async jobs and webhooks
 
-Submit for a receipt without waiting: `submit_embed` / `submit_detection`; media: `images`, `documents`, `videos`.
+To get a receipt without waiting for the result, use `submit_embed` / `submit_detection`. Media types: `images`, `documents`, `videos`.
 
-`get_job(request_id)` for embedding; `get_job(request_id, detect=True)` for detection.
+Check status with `get_job(request_id)` for embedding and `get_job(request_id, detect=True)` for detection.
 
 <Details title="Submit and collect an async job">
 
@@ -137,7 +137,7 @@ The webhook is optional (Java/Rust: pass `null` / `None`). Save the receipt. [Jo
 
 <Details title="Manage endpoints and verify webhooks">
 
-Methods: `create_webhook`, `list_webhooks`, `update_webhook`, `delete_webhook`, `list_webhook_deliveries`, `redeliver_webhook`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the one-time signing secret.
+Methods: `create_webhook`, `list_webhooks`, `update_webhook`, `delete_webhook`, `list_webhook_deliveries`, `redeliver_webhook`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the signing secret; it is shown only once.
 
 ```python
 from etchv import verify_webhook, WebhookVerificationError
@@ -149,18 +149,18 @@ except WebhookVerificationError:
 # Deduplicate by event["id"], enqueue your work, then return 2xx.
 ```
 
-`verify_webhook` verifies the signature, timestamp and event ID, or raises `WebhookVerificationError`. Use raw bytes and a 300-second tolerance. Deduplicate, enqueue, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
+`verify_webhook` verifies the signature, timestamp and event ID, or raises `WebhookVerificationError`. Verify the raw request bytes, with a 300-second timestamp tolerance. Skip events you have already handled, queue your work, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
 
 </Details>
 
 ## GPU processing
 
-Pass `accelerator="gpu"` on Business or Enterprise. GPU uses 3× credits; CPU fallback uses normal credits. `result.accelerator` reports the accelerator used. See
+On Business or Enterprise plans, pass `accelerator="gpu"`. GPU processing uses 3× credits. If the job falls back to CPU, it uses normal credits. `result.accelerator` reports the accelerator used. See
 [GPU processing](/docs/api/gpu).
 
 ## Choose where results are stored
 
-[Connect your bucket](/docs/storage), then pass its destination ID and optional object key. Omit both for Etchv storage.
+[Connect your bucket](/docs/storage), then pass its destination ID. You can also pass an object key, which is the file’s path in your bucket. Leave both out to use Etchv storage.
 
 <Details title="Deliver to your bucket">
 
@@ -174,8 +174,8 @@ if delivery["status"] == "stored":
     data = client.download_storage_delivery(delivery["id"])
 ```
 
-After job success, inspect delivery with `storage:read` (earlier reads return `404`). Once `stored`, use `download_storage_delivery` to download.
+After the job succeeds, check the delivery with `storage:read`. Checking earlier returns `404`. When the status is `stored`, download the file with `download_storage_delivery`.
 
-With `storage:write` and owner/admin access, `retry_storage_delivery` retries failed/cancelled delivery for free. Manage with: `create_storage_destination`, `verify_storage_destination`, `update_storage_destination`, `delete_storage_destination`, `create_storage_delivery`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
+With `storage:write` and owner/admin access, `retry_storage_delivery` retries a failed or cancelled delivery at no cost. Manage destinations and deliveries with: `create_storage_destination`, `verify_storage_destination`, `update_storage_destination`, `delete_storage_destination`, `create_storage_delivery`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
 
 </Details>

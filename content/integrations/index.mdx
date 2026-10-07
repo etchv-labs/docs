@@ -1,7 +1,7 @@
 Add watermarking or detection to Zapier, n8n or Make workflows.
 
 <Callout title="Early access">
-Connectors are available by invitation, not in public directories. [Contact us](mailto:hello@etchv.com) to join, or use the [HTTP API](/docs/quickstart) now.
+Connectors are available by invitation only. They are not listed in public app directories. [Contact us](mailto:hello@etchv.com) to join, or use the [HTTP API](/docs/quickstart) now.
 </Callout>
 
 ## Pick your platform
@@ -9,33 +9,33 @@ Connectors are available by invitation, not in public directories. [Contact us](
 <Cards>
   <Card href="/docs/integrations/zapier" title="Zapier">Private invite. Connect file triggers to delivery actions.</Card>
   <Card href="/docs/integrations/n8n" title="n8n">Community node for self-hosted workflows.</Card>
-  <Card href="/docs/integrations/make" title="Make">Private app shared with your organization.</Card>
+  <Card href="/docs/integrations/make" title="Make">Private app shared with your Organization.</Card>
 </Cards>
 
-Each connector submits embedding or detection jobs, checks status, collects results and downloads saved assets.
+Each connector can send watermarking or detection jobs, check their status, collect results and download saved assets.
 
 ## Before you connect
 
 | Input | What to provide |
 | --- | --- |
 | API key | `watermarks:embed`, `watermarks:detect` and/or `assets:read`, saved in the platform’s credential store |
-| File | Image, PDF or video; platform limits may be lower than [API limits](/docs/api/errors) |
+| File | Image, PDF or video. Platform limits may be lower than [API limits](/docs/api/errors) |
 | Reference data · embedding | Non-empty JSON, such as `{"asset":"142","delivery":"partner-a"}` |
-| Idempotency key | Stable ID for one event and operation, such as `approved_asset_142_embed` |
+| [Idempotency key](/docs/api/async#retry-safely) | A value you choose so a retry isn't run twice. Keep it the same for one event and operation, such as `approved_asset_142_embed` |
 
-Connection checks use no credits. Keep the original reference record: detection returns its watermark ID, not the JSON.
+Connection checks use no credits. Keep the original reference record. Detection returns its watermark ID, not the JSON.
 
 ## What a workflow does
 
 1. **Submit:** Save `request_id`, `status_url` and `result_url` from the receipt.
-2. **Wait:** Check status about once a minute while `queued`, `running` or `retrying`.
-3. **Collect:** On `succeeded`, download the file or read detection JSON.
-4. **Handle failure:** On `failed`, record `request_id` and `error_code`; do not automatically create a new job.
+2. **Wait:** Check the status about once a minute while it is `queued`, `running` or `retrying`.
+3. **Collect:** On `succeeded`, download the file or read the detection JSON.
+4. **Handle failure:** On `failed`, record `request_id` and `error_code`. Do not create a new job automatically.
 
-Image and PDF jobs have a 30-minute processing deadline, so set a 35-minute workflow deadline. Video jobs add 15 seconds per frame, up to 90 minutes. Collect results within 24 hours, or use the [asset library](/docs/api/assets) for retained files.
+Image and PDF jobs must finish processing within 30 minutes, so give your workflow 35 minutes. Video jobs add 15 seconds per frame, up to 90 minutes. Collect results within 24 hours, or use the [asset library](/docs/api/assets) for kept files.
 
 <Callout title="Retry the same operation with the same key">
-After a timeout, resend identical file, data and options with the original key. Etchv returns the same job without another reservation. Changed inputs return `409`.
+After a timeout, send the same file, data and options again with the original key. Etchv returns the same job and does not reserve credits again. If any input changed, you get `409`.
 </Callout>
 
 A completed detection with `watermarked: false` still uses credits. See [billing](/docs/billing) and [job handling](/docs/api/async).

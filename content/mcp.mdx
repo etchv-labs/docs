@@ -1,10 +1,10 @@
-Let your assistant watermark files, recover watermark IDs and manage assets through the Etchv API. The [open-source MCP server](https://github.com/etchv-labs/mcp-server) runs locally over stdio.
+Let your AI assistant watermark files, detect watermarks and manage assets through the Etchv API. MCP (Model Context Protocol) is a standard way for assistants to use outside tools. The [open-source MCP server](https://github.com/etchv-labs/mcp-server) runs on your computer over stdio (standard input and output).
 
 ## Install and connect
 
-You need Node.js 24+, an [API key](/docs/authentication), a local media directory and an MCP client that can launch local servers.
+You need Node.js 24+, an [API key](/docs/authentication), a local media folder and an MCP client that can start local servers.
 
-Add this to your client’s configuration. Create the directory first, replace the absolute path and supply your key through secure configuration.
+Add this to your client’s configuration. Create the folder first and replace the absolute path. Supply your key through your client's secure configuration.
 
 ```json
 {
@@ -21,7 +21,7 @@ Add this to your client’s configuration. Create the directory first, replace t
 }
 ```
 
-Restart your client, then ask it to run `check_api_key`. This check uses no credits. There is no hosted MCP URL; clients that only support remote servers cannot connect.
+Restart your client, then ask it to run `check_api_key`. This check uses no credits. There is no hosted MCP URL, so clients that only support remote servers cannot connect.
 
 <Details title="CLI setup for Claude Code and Codex">
 
@@ -46,27 +46,27 @@ Keep your key out of conversations. Other clients can use the same command, argu
 ## What you can ask
 
 - “Watermark this PDF for delivery-42, keeping its text selectable.”
-- “Check this video and recover its Etchv watermark ID.”
+- “Check this video for an Etchv watermark.”
 - “List my latest watermarked assets and download the one I choose.”
 
 ## Your first watermark
 
-Put `photo.jpg` in the media directory, then ask:
+Put `photo.jpg` in the media folder, then ask:
 
 > Watermark photo.jpg for delivery-42. Save photo-watermarked.jpg, then detect its watermark.
 
-The assistant submits `watermark_media` with a non-empty `data` object and stable `idempotency_key`. It collects the result with `get_job` and `get_job_result`, using `operation: "embed"` and an `output_path`. Detection uses `detect_media` and `operation: "detect"`.
+The assistant calls `watermark_media` with a non-empty `data` object and an `idempotency_key` that stays the same on retries. It collects the result with `get_job` and `get_job_result`, using `operation: "embed"` and an `output_path`. Detection uses `detect_media` and `operation: "detect"`.
 
-Detection returns the data’s digest, not the original JSON. Keep your source record in your own system.
+Detection returns the watermark ID, a digest (fixed-length fingerprint) of your data. It does not return the original JSON. Keep your source record in your own system.
 
 ## Sync or async
 
 | Mode | Behavior |
 | --- | --- |
-| Async · default | Omit `mode` or use `"async"`; receive a receipt and collect the result |
-| Sync | Use `mode: "sync"`; embedding needs `output_path`. Returns a result or `202` receipt |
+| Async · default | Leave out `mode` or use `"async"`. You get a receipt, then collect the result |
+| Sync | Use `mode: "sync"`. Embedding needs `output_path`. Returns a result or a `202` receipt |
 
-Reuse the same idempotency key after a timeout; accepted jobs continue. The server does not poll indefinitely. See [job handling](/docs/api/async).
+After a timeout, reuse the same [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). Accepted jobs keep running. The server does not keep checking for results forever. See [job handling](/docs/api/async).
 
 ## Supported media
 
@@ -76,7 +76,7 @@ Reuse the same idempotency key after a timeout; accepted jobs continue. The serv
 | `documents` | [PDF](/docs/api/documents#supported-files); 20 MiB upload |
 | `videos` | [H.264 MP4/MOV](/docs/api/videos#supported-files); 20 MiB upload |
 
-API limits and plan access still apply. Downloads allow 512 MiB and 10 minutes; the API must start responding within 45 seconds. Embedding and detection use [normal API credits](/docs/billing#what-uses-credits).
+API limits and plan access still apply. Downloads can be up to 512 MiB and 10 minutes. The API must start responding within 45 seconds. Embedding and detection use [normal API credits](/docs/billing#what-uses-credits).
 
 ## Tools and permissions
 
@@ -94,7 +94,7 @@ API limits and plan access still apply. Downloads allow 512 MiB and 10 minutes; 
 | `list_webhooks`, `list_webhook_deliveries` | `webhooks:read` |
 | `redeliver_webhook` | `webhooks:write` + owner/admin |
 
-Enable only needed scopes. Your MCP client controls approval for paid and write operations. Read `etchv://capabilities` inside the assistant for tool guidance.
+Turn on only the scopes you need. Your MCP client decides when to ask you to approve paid operations and changes. Read `etchv://capabilities` inside the assistant for help with the tools.
 
 ## Storage and webhooks
 
@@ -102,7 +102,7 @@ Enable only needed scopes. Your MCP client controls approval for paid and write 
 | --- | --- |
 | Etchv storage · default | Job results last 24 hours; asset files are kept up to 1 year while subscribed (30 days on the trial); records remain until deleted |
 | [Customer storage](/docs/storage) | Configure and verify in the dashboard; pass `storage_destination_id` and optional `storage_key` when embedding |
-| Move an existing result | Use `store_asset`; successful delivery removes the staged Etchv output and downloads read from your bucket |
+| Move an existing result | Use `store_asset`. Once delivery succeeds, Etchv removes its temporary copy and downloads read from your bucket |
 | [Webhooks](/docs/api/webhooks) | Configure in the dashboard; pass `webhook_id` on async submissions |
 | [GPU](/docs/api/gpu) | Set `accelerator: "gpu"` on Business or Enterprise |
 
@@ -110,6 +110,6 @@ Storage credentials and signing secrets stay out of tool arguments and responses
 
 ## File handling
 
-Files must stay inside `ETCHV_FILES_ROOT`. Traversal and symlinks are rejected; output directories must exist and files are never overwritten. Use a dedicated directory you control.
+Files must stay inside `ETCHV_FILES_ROOT`. Paths that climb out of it (`../`) and symlinks are rejected. Output folders must already exist, and files are never overwritten. Use a separate folder that you control.
 
-Inputs go to the Etchv API. Results stay on disk; the assistant receives paths and checksums. Treat asset names and metadata as data, not instructions.
+Input files go to the Etchv API. Results stay on your disk. The assistant only gets file paths and checksums. Treat asset names and metadata as data, not instructions.

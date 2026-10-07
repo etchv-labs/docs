@@ -7,11 +7,11 @@ Keep files on Etchv with no setup, or deliver watermarked results to your own cl
 | Etchv · default | Up to 1 year while your subscription is active; 30 days on the trial |
 | Your S3, GCS or Azure destination | Your bucket’s lifecycle policy |
 
-Both appear in the asset library. Records remain until deleted; original uploads stay on Etchv regardless of the output destination.
+Both appear in the asset library. Records stay until you delete them. Original uploads stay on Etchv, wherever the output goes.
 
-If a subscription ends, Etchv keeps its files for 30 more days, and never past their first year. Subscribing again in that time restores the full year. Each asset’s `file_expires_at` shows its current date.
+If a subscription ends, Etchv keeps its files for 30 more days, but never past their first year. Subscribe again in that time to restore the full year. Each asset’s `file_expires_at` shows its current expiry date.
 
-Connecting a bucket does not set a default or move existing files. Select it per request, or use **Move to my storage** on an available Etchv-hosted result. Each result has one destination; moving between customer buckets or back to Etchv is not supported.
+Connecting a bucket does not make it the default or move existing files. Choose it on each request, or use **Move to my storage** on an available Etchv-hosted result. Each result has one destination. You cannot move a result between your buckets or back to Etchv.
 
 ## Connect your provider
 
@@ -21,7 +21,7 @@ Connecting a bucket does not set a default or move existing files. Select it per
   <Card href="/docs/storage/azure" title="Azure Blob Storage">Container-scoped SAS token.</Card>
 </Cards>
 
-Owners and admins can manage up to 10 destinations; members can view them. **Test connection** writes and reads a `.etchv-connection-dst_….txt` probe under your prefix. You may remove it afterward. Normal exports need neither delete nor bucket-list permissions.
+Owners and admins can manage up to 10 destinations. Members can view them. **Test connection** writes and reads a small test file, `.etchv-connection-dst_….txt`, under your prefix (the folder path Etchv writes to). You may remove it afterward. Normal exports need neither delete nor bucket-list permissions.
 
 ## Select storage on a request
 
@@ -36,38 +36,38 @@ curl -X POST \
 
 | Option | Value |
 | --- | --- |
-| `storage_destination_id` | Verified, enabled destination in your organization; omit to use Etchv |
+| `storage_destination_id` | Verified, enabled destination in your Organization; omit to use Etchv |
 | `storage_key` | Optional URL-encoded filename beneath the destination prefix |
 | `webhook_id` | Optional delivery notifications; async requests only |
 
-Storage options work on all sync and async embedding endpoints. Detection rejects them. Changing the destination or key with the same idempotency key returns `409`.
+Storage options work on all sync and async embedding endpoints. Detection rejects them. If you change the destination or key but reuse the same [idempotency key](/docs/api/async#retry-safely), you get `409`.
 
 <Details title="Object names, formats and size limits">
 
-The default name is the output asset ID plus its native extension. Prefix `etchv` and key `reports/file.pdf` produce `etchv/reports/file.pdf`.
+The default name is the output asset ID plus its usual file extension. Prefix `etchv` and key `reports/file.pdf` produce `etchv/reports/file.pdf`.
 
-- No empty path segments, traversal, leading slashes or control characters.
+- No empty path segments, `..` traversal, leading slashes or control characters.
 - Combined prefix and key: at most 800 UTF-8 bytes.
 - Verified output: at most 256 MiB.
-- File bytes and MIME type stay unchanged; a filename extension does not convert formats.
+- File bytes and MIME type stay the same. A filename extension does not convert formats.
 
 </Details>
 
 ## Durable delivery to your bucket
 
-1. **Verify:** Etchv watermarks the file and stages its verified output.
+1. **Verify:** Etchv watermarks the file, checks the output and holds it in temporary storage.
 2. **Deliver:** A worker uploads those bytes. Retries add no watermarking charge.
-3. **Clean up:** After delivery, downloads read your bucket and Etchv removes staged output and its job-result object.
+3. **Clean up:** After delivery, downloads read from your bucket. Etchv removes its temporary copy and the job-result object.
 
 <Callout title="Wait for storage confirmation">
 A binary response or `watermark.embed.succeeded` confirms watermarking. Delivery status `stored` or `storage.delivery.succeeded` confirms the copy is in your bucket.
 </Callout>
 
-Until delivery, downloads may use staging. Failed uploads remain visible against the chosen destination and can be retried for up to 30 days; until one succeeds, the result stays on Etchv. `staging_deleted_at` confirms cleanup. Delivered assets have `file_expires_at: null` because your bucket controls retention.
+Until delivery, downloads may come from the temporary copy. Failed uploads stay visible under the chosen destination and can be retried for up to 30 days. Until one succeeds, the result stays on Etchv. `staging_deleted_at` confirms cleanup. Delivered assets have `file_expires_at: null` because your bucket controls how long files are kept.
 
 ## Track and download a delivery
 
-Find `storage_delivery_id` in the job receipt, status or asset record, or `X-Storage-Delivery-ID` in a successful binary response. The delivery becomes readable after the job succeeds; earlier requests return `404`.
+Find `storage_delivery_id` in the job receipt, status or asset record, or `X-Storage-Delivery-ID` in a successful binary response. You can read the delivery after the job succeeds. Earlier requests return `404`.
 
 ```sh
 curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID" \
@@ -80,9 +80,9 @@ curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID" \
 | `stored` | Verified bytes delivered |
 | `failed`, `cancelled` | Inspect `error_code` before retrying |
 
-Records include provider, object key, URI, attempts and recent history. Private destinations return `s3://`, `gs://` or `azure://` URIs. Already-public destinations also return `public_url`; this setting never changes access policies.
+Records include the provider, object key, URI, attempts and recent history. Private destinations return `s3://`, `gs://` or `azure://` URIs. Destinations that are already public also return `public_url`. This setting never changes access policies.
 
-Download with provider credentials or Etchv’s authenticated proxy:
+Download with your provider credentials, or through Etchv’s proxy using your API key:
 
 ```sh
 curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID/content" \
@@ -91,9 +91,9 @@ curl "https://api.etchv.com/storage/deliveries/$DELIVERY_ID/content" \
 
 <Details title="Download access and integrity">
 
-The proxy works after staging cleanup while the asset record exists, the connection is enabled and verified, and the object remains accessible. It checks downloaded bytes against the verified checksum; changed objects cannot complete a verified download.
+The proxy keeps working after the temporary copy is removed, as long as the asset record exists, the connection is enabled and verified, and the object can still be reached. It checks the downloaded bytes against the saved checksum. If the object has changed, the download does not complete.
 
-Direct public URLs follow your bucket’s access policy and bypass this check. Download links never expose cloud credentials or write-capable SAS tokens.
+Direct public URLs follow your bucket’s access policy and skip this check. Download links never expose cloud credentials or write-capable SAS tokens.
 
 </Details>
 
@@ -119,29 +119,29 @@ Direct public URLs follow your bucket’s access policy and bypass this check. D
 
 <Details title="Connection changes and duplicate deliveries">
 
-Provider, bucket, prefix and visibility are immutable; create a new destination to change them. Credential replacement clears verification, so test again. For S3, update your role’s trust directly. Responses never return credentials.
+Provider, bucket, prefix and visibility cannot be changed. Create a new destination instead. Replacing credentials clears verification, so test again. For S3, update your role’s trust policy directly. Responses never return credentials.
 
-A result’s destination and delivery key are fixed. Repeating the same pair and key returns the existing delivery; changing either returns `409`. Conditional writes prevent overwriting different bytes. After an uncertain upload, a retry accepts an existing object only if its bytes match.
+A result’s destination and delivery key are fixed. Repeating the same result, destination and key returns the existing delivery. Changing the destination or key returns `409`. Conditional writes stop Etchv from overwriting an object with different bytes. If it is unclear whether an upload finished, a retry accepts an existing object only if its bytes match.
 
 </Details>
 
 ## Retry, retention and deletion
 
-Up to 10 automatic attempts run over about 22 hours. For up to 30 days, you can start up to 10 manual retry cycles without another watermarking charge.
+Etchv makes up to 10 automatic attempts over about 22 hours. For up to 30 days, you can start up to 10 manual retry cycles with no extra watermarking charge.
 
 | Error code | Check |
 | --- | --- |
 | `provider_unavailable` | Credentials, permissions or provider availability |
 | `object_key_conflict` | Different bytes already exist at the selected key |
-| `source_or_destination_unavailable` | Expired/deleted source, disabled organization, or missing/disabled/unverified destination |
+| `source_or_destination_unavailable` | Expired/deleted source, disabled Organization, or missing/disabled/unverified destination |
 | `export_too_large` | Output exceeds 256 MiB |
-| `verified_source_mismatch` | Staged bytes failed checksum verification; export is cancelled |
+| `verified_source_mismatch` | The temporary copy failed its checksum check; export is cancelled |
 
 <Details title="Retry timing and deletion behavior">
 
 Automatic delays: 30 seconds, 2 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 6 hours and 8 hours. Each manual retry starts a new automatic cycle.
 
-Deleting an asset stops future exports and proxy downloads. Deleting a connection stops new exports and destroys credentials. In-flight uploads may finish; neither action deletes customer objects. Delivery history remains in Etchv.
+Deleting an asset stops future exports and proxy downloads. Deleting a connection stops new exports and destroys its credentials. Uploads already in progress may finish. Neither action deletes objects in your bucket. Delivery history stays in Etchv.
 
 </Details>
 

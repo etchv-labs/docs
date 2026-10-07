@@ -12,8 +12,11 @@ export ETCHV_API_KEY="YOUR_API_KEY"
 
 ## Embed a watermark synchronously
 
-Replace `photo.jpg` with your image. Use a unique reference for this delivery and
-a new idempotency key for each new operation.
+Replace `photo.jpg` with your image. Use a unique reference for this delivery.
+
+Also send an idempotency key. This is a value you choose for one operation. If a
+network error makes you retry, send the same request with the same key, and Etchv
+will not run the work twice. Use a new key for each new operation. [Retry safely](/docs/api/async#retry-safely).
 
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/images \
@@ -32,8 +35,9 @@ Check the status in `response-headers.txt`:
 | `202` | The body is a JSON job receipt. [Follow its `result_url`](/docs/api/async#retrieve-a-pending-result-either-mode) to collect the image |
 | Error | Read the [error response](/docs/api/errors); the body is not an image |
 
-Save `X-Watermark-ID` with your delivery record. Keep `X-Request-ID` for recovery
-or support. Write the returned bytes directly; re-encoding can affect recovery.
+Save the watermark ID from `X-Watermark-ID` with your delivery record. Keep
+`X-Request-ID` to recover the request or to contact support. Save the returned
+bytes as they are. Re-encoding the file can affect recovery.
 
 ## Detect the watermark
 
@@ -43,8 +47,9 @@ curl --fail-with-body https://api.etchv.com/watermarks/images/detect \
   -F 'file=@photo-watermarked.jpg'
 ```
 
-Compare `watermark_id` with your saved ID. The response also includes `watermarked`
-and `confidence`; a missing mark returns a null ID. [Interpret detection results](/docs/api/detect#interpret-the-result).
+Compare `watermark_id` with the watermark ID you saved. The response also includes
+`watermarked` and `confidence`. If no watermark is found, `watermark_id` is null.
+[Interpret detection results](/docs/api/detect#interpret-the-result).
 
 ## Build it into your application
 
@@ -60,9 +65,11 @@ and `confidence`; a missing mark returns a null ID. [Interpret detection results
 ## Find your files again
 
 Use `X-Asset-ID` and `X-Source-Asset-ID` to find the output and original in the
-[asset library](/docs/api/assets). Etchv keeps files for 30 days on the trial and up to a year on a paid plan; records remain until deleted.
+[asset library](/docs/api/assets). Etchv keeps files for 30 days on the trial and
+up to a year on a paid plan. Records stay until you delete them.
 
 ## Prefer an asynchronous request?
 
-Append `/async` to the embedding endpoint. Keep the same fields; collect the
-result later or request a webhook. [Sync and async guide](/docs/api/async).
+Add `/async` to the end of the embedding endpoint. Send the same fields. Then
+collect the result later, or ask for a webhook (a message Etchv sends to your
+server when the job finishes). [Sync and async guide](/docs/api/async).

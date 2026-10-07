@@ -6,11 +6,12 @@
   <Fact label="CPU cost">1 credit / 24 frames*</Fact>
 </Facts>
 
-*To embed, per started 24 frames. Detection is 1 credit per file.*
+*For embedding, 1 credit for each started block of 24 frames. Detection costs 1 credit per file.*
 
 ## Request
 
-Use `watermarks:embed`, a supported MP4/MOV and a non-empty JSON reference object.
+Send a supported MP4 or MOV file and a JSON reference object that is not empty. Your
+API key needs the `watermarks:embed` permission.
 
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/videos/async \
@@ -21,8 +22,8 @@ curl --fail-with-body https://api.etchv.com/watermarks/videos/async \
 ```
 
 This returns a `202` receipt. [Collect the result](/docs/api/async#retrieve-a-pending-result-either-mode)
-with the same organization’s key. The finished file keeps its container,
-frame timing and supported audio; audio is not watermarked.
+with a key from the same Organization. The finished file keeps its container,
+frame timing and supported audio. The audio is not watermarked.
 
 ## Choose sync or async
 
@@ -32,14 +33,16 @@ frame timing and supported audio; audio is not watermarked.
 | Detect | `POST /watermarks/videos/detect` with `file` and `watermarks:detect` |
 | Background embed / detect | Append `/async` to either endpoint |
 
-Sync waits briefly and returns `202` if work continues. Both operations use durable
-jobs. Optional queries: `accelerator=gpu` on Business/Enterprise; `webhook_id` for
-async; `storage_destination_id` and `storage_key` for embedding.
+A sync request waits briefly and returns `202` if the work is still running. Both
+operations run as durable jobs, which keep going even if your connection drops.
+Optional query parameters: `accelerator=gpu` on Business and Enterprise plans,
+`webhook_id` for async requests, and `storage_destination_id` and `storage_key` for
+embedding.
 [All options](/docs/api/embed#request-options).
 
 ## <span id="first-supported-profile" />Supported files
 
-All limits apply together: for example, the 240-frame cap allows 10 seconds at 24 fps.
+All limits apply at once. For example, the 240-frame cap allows 10 seconds at 24 fps.
 
 | Requirement | Limit |
 | --- | --- |
@@ -51,20 +54,21 @@ All limits apply together: for example, the 240-frame cap allows 10 seconds at 2
 | Audio | None, or one synchronized mono/stereo AAC-LC track |
 
 HDR, variable frame rates, fragmented MP4, other codecs, extra tracks, subtitles
-and attachments are unsupported.
+and attachments are not supported. Video must use a constant frame rate.
 
 <Callout title="Check playback compatibility">
-  Native output uses lossless H.264 with the High 4:4:4 Predictive coding profile
-  and YUV 4:2:0 pixels. Use a compatible decoder; browser and hardware playback
-  varies. Lossless output can be larger than the source.
+  The output uses lossless H.264 with the High 4:4:4 Predictive coding profile
+  and YUV 4:2:0 pixels. Use a player that supports this profile. Support in browsers
+  and hardware players varies. Lossless output can be larger than the source.
 </Callout>
 
 <Details title="What verification checks">
 
-Every frame of the final encoded video must recover the exact ID and meet 35 dB
-PSNR, accounting for chroma conversion. Audio packets and timing are copied and
-verified. Container metadata is copied where supported, not byte-for-byte.
-Editing, transcoding or recompression can affect recovery.
+Etchv must detect the exact watermark in every frame of the final encoded video.
+Each frame must also meet 35 dB PSNR, a measure of how close it looks to the
+original, after allowing for color conversion. Audio packets and timing are copied
+and checked. Metadata in the MP4/MOV wrapper is copied where supported, but not
+byte-for-byte. Editing, transcoding or recompression can affect recovery.
 
 </Details>
 
@@ -72,8 +76,8 @@ Editing, transcoding or recompression can affect recovery.
 
 - **Embed result:** native video bytes at `/watermarks/jobs/{request_id}/result`.
 - **Detect result:** JSON at `/watermarks/detection-jobs/{request_id}/result`.
-- **Per-frame results:** zero-based `units`. The top-level ID is present only when every frame recovers the same ID.
-- **Retry:** keep the same upload and `Idempotency-Key`. A disconnect does not cancel work.
+- **Per-frame results:** `units`, numbered from zero. The top-level watermark ID is present only when Etchv finds the same watermark in every frame.
+- **Retry:** send the same upload and `Idempotency-Key`. A dropped connection does not cancel the work.
 
 Follow `Retry-After` when polling. A video job’s deadline is 30 minutes plus 15
 seconds per frame, up to 90 minutes; completed results last 24 hours. [Retry and recovery details](/docs/api/async#retry-safely).
@@ -85,15 +89,16 @@ seconds per frame, up to 90 minutes; completed results last 24 hours. [Retry and
 | Embed | 1 per started 24 frames: 24 frames cost 1, 25 cost 2, 120 cost 5, 240 cost 10 |
 | Detect | 1 per file, whatever its length |
 
-Embedding and detection are charged separately. Credits are reserved on
-acceptance, settled once on success and refunded on failure. Retries and saved
-result downloads cost no extra credits. [GPU pricing](/docs/api/gpu#credits-and-fallback).
+Embedding and detection are charged separately. Credits are reserved when Etchv
+accepts the request, charged once on success and refunded on failure. Retries and
+downloads of saved results cost no extra credits. [GPU pricing](/docs/api/gpu#credits-and-fallback).
 
 Python: `embed_video` / `detect_video`. Node.js: `embedVideo` / `detectVideo`.
-Their result’s `image` field contains video bytes; save the returned filename and
-content type. SDKs poll within their configured timeout.
+The result’s `image` field contains the video bytes. Save it with the returned
+filename and content type. The SDKs check for the result until their configured
+timeout.
 
 ## <span id="choose-where-results-are-stored" />Asset library
 
-`X-Asset-ID` and `X-Source-Asset-ID` identify the output and original.
+`X-Asset-ID` identifies the output. `X-Source-Asset-ID` identifies the original.
 [File retention](/docs/api/assets#files-and-records) · [Customer storage](/docs/storage).

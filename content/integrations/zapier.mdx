@@ -12,20 +12,20 @@ The connection check uses no credits.
 
 | Step | Configuration |
 | --- | --- |
-| Submit Watermark | Map file, filename, media type, JSON reference data and a stable source-event idempotency key |
+| Submit Watermark | Map the file, filename, media type, JSON reference data and an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). Base the key on the source event so it stays the same |
 | Delay | Wait about one minute |
-| Get Job Status | Use `status_url`; repeat while pending, up to 35 minutes |
+| Get Job Status | Use `status_url`. Repeat while the job is pending, up to 35 minutes |
 | Get Job Result | On success, use `result_url` and operation **Watermark** |
 | Deliver | Map the returned `file` to your next action |
 
-Save `request_id`, `asset_id` and the reference record. On failure, route `error_code` to your error handling.
+Save `request_id`, `asset_id` and the reference record. On failure, send `error_code` to your error handling.
 
-For detection, select **Submit Detection** and operation **Detection** when collecting the result. Compare `watermark_id` with your records; `watermarked: false` is a completed result.
+For detection, select **Submit Detection**. Choose operation **Detection** when you collect the result. Compare `watermark_id` with the watermark IDs in your records. `watermarked: false` is a finished result: no watermark was found.
 
 ## File and retry details
 
-- Map a Zapier **File** field with an HTTPS URL. The connector downloads it without forwarding your Etchv key to the source host.
-- Retry identical inputs with the same idempotency key. Pending results are never passed downstream as files.
-- Collect within 24 hours. **Download Asset** can retrieve a retained result later with `assets:read`.
+- Map a Zapier **File** field with an HTTPS URL. The connector downloads the file without sending your Etchv key to the site that hosts it.
+- To retry, send the same inputs with the same idempotency key. Results that are still pending are never passed on as files.
+- Collect results within 24 hours. Later, **Download Asset** can get a kept result with `assets:read`.
 
 See [workflow requirements](/docs/integrations#before-you-connect), [async jobs](/docs/api/async) and [asset retention](/docs/api/assets#files-and-records).

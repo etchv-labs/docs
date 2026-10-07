@@ -7,16 +7,19 @@
 </Facts>
 
 [Sign up](/signup) and use any supported format in your personal workspace.
-The trial starts at signup, never renews and creates no automatic charge.
-When time or credits run out, processing pauses; your account and records remain.
+The trial starts when you sign up. It never renews and never charges you
+automatically. When the time or credits run out, processing pauses. Your account
+and records stay.
 
 <Details title="Upgrading during a trial">
 
 Upgrade in [Billing](/dashboard/billing). Paid credits arrive in the same workspace
-after payment confirmation. Unused trial credits are spent first until their
-original expiry. Paid-plan format limits apply as soon as you upgrade. Additional workspaces do not
-grant another trial. Trial files are kept for 30 days; upgrading before a file
-expires extends it to a year from its creation.
+once your payment is confirmed. Etchv spends unused trial credits first, until they
+would have expired. Your paid plan's format limits apply as soon as you upgrade.
+Extra workspaces do not get another trial.
+
+Trial files are kept for 30 days. If you upgrade before a file expires, Etchv keeps
+it for a year from the day it was created.
 
 </Details>
 
@@ -34,13 +37,16 @@ expires extends it to a year from its creation.
 
 </ResponsiveTable>
 
-Prices are USD before tax. Annual billing saves 20%. Credits arrive monthly and
-expire at each allocation’s end, including on annual plans.
+Prices are in USD before tax. Annual billing saves 20%. Credits arrive each month.
+Each month's credits expire when that monthly allocation ends, including on Annual plans.
 
-Plans and credits belong to an organization. Members share its allowance;
-only the owner can change billing. Image access includes supported animation,
-TIFF pages and Photoshop layers. Format restrictions apply to both embedding and
-detection, in the dashboard and API; unsupported plan access returns `403` before reservation.
+Plans and credits belong to an Organization. Members share its allowance. Only the
+owner can change billing. Image access includes supported animation, TIFF pages
+and Photoshop layers.
+
+Format limits apply to both embedding and detection, in the dashboard and the API.
+If your plan does not include a format, the request returns `403` before any credits
+are reserved.
 
 ## What uses credits
 
@@ -52,14 +58,16 @@ detection, in the dashboard and API; unsupported plan access returns `403` befor
 | Detect, any image, PDF or video | 1 per file, even when no watermark is found |
 | Asset management, saved downloads, job retries | No additional credits |
 
-Embedding and detection are separate charges. Failed operations refund reserved
-credits. At zero available credits, new processing returns `402`; there are no
-automatic overage charges. Accepted jobs retain their reservation until finalized.
+Embedding and detection are charged separately. If an operation fails, its reserved
+credits are refunded. With zero available credits, new processing returns `402`.
+Etchv never charges automatically for going over. A job that was accepted keeps
+its reserved credits until it finishes.
 
 ## GPU processing
 
 Business and Enterprise can request `accelerator=gpu`. It costs **3× normal
-credits** when GPU runs; CPU fallback costs the normal amount.
+credits** when the GPU runs. If the work falls back to the CPU, it costs the
+normal amount.
 [GPU availability and options](/docs/api/gpu).
 
 ## API rate limits
@@ -77,8 +85,9 @@ credits** when GPU runs; CPU fallback costs the normal amount.
 
 </ResponsiveTable>
 
-Limits are shared across the organization’s keys and dashboard. Excess requests
-return `429` and a `Retry-After` interval; wait or upgrade for more capacity.
+All keys and dashboard use in an Organization share these limits. A request over
+the limit returns `429` with a `Retry-After` time to wait. Wait, or upgrade for
+more capacity.
 [What counts toward each limit](/docs/api/errors#rate-limits).
 
 ## Change or cancel a subscription
@@ -91,8 +100,8 @@ return `429` and a `Retry-After` interval; wait or upgrade for more capacity.
 | Update payment details | Open **Manage billing** |
 | View or download invoices | The workspace owner sees them under **Invoices** on the Billing page; each opens its Stripe PDF |
 
-Use [Dashboard → Billing](/dashboard/billing). Resume a canceled renewal before
-scheduling a plan change. Overdue payments may pause processing.
+Use [Dashboard → Billing](/dashboard/billing). If you canceled renewal, resume it
+before you schedule a plan change. Overdue payments may pause processing.
 [Contact us](/contact) for Enterprise terms, evaluations or additional capacity.
 
 ## Enterprise invoices
@@ -102,14 +111,14 @@ invoice carries your company's legal name, address, tax ID and PO number, and
 is emailed to your billing contact. Pay it from the invoice by bank transfer,
 ACH direct debit or card.
 
-Each period's credits arrive when its invoice is issued. An invoice unpaid past
-its due date pauses processing until it is paid. The workspace owner sees every
+Each period's credits arrive when its invoice is issued. If an invoice is not paid
+by its due date, processing pauses until it is paid. The workspace owner sees every
 invoice on the Billing page. [Contact us](/contact) to set up or change a contract.
 
 ## Monthly usage statements
 
 [Dashboard → Usage](/dashboard/history) summarizes each calendar month (UTC) by
 operation, media format and hardware, with the credits used. Choose a month to
-see it, and **Download CSV** for one row per operation. Owners and admins see
+see it. Select **Download CSV** to get one row per operation. Owners and admins see
 the whole workspace; members see their own requests. Statements cover the
 current month so far and the eleven before it.

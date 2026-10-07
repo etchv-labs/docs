@@ -1,4 +1,4 @@
-Rust 1.88+. A blocking client; use a dedicated thread or `spawn_blocking` in async applications. MIT licensed.
+Needs Rust 1.88 or later. The client is blocking: each call waits for its result. In an async application, run it on its own thread or with `spawn_blocking`. MIT licensed.
 
 ## Install
 
@@ -16,7 +16,7 @@ serde_json = "1"
 
 ## Embed a file
 
-Set `ETCHV_API_KEY` on your server. This example needs `watermarks:embed`, an active plan and available credits.
+Set `ETCHV_API_KEY` on your server. This example needs an API key with the `watermarks:embed` scope, an active plan and available credits.
 
 ```rust
 use etchv::{Client, Options};
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`get_api_key_info` checks credentials for free. Write output bytes without re-encoding.
+`get_api_key_info` checks your API key and uses no credits. Save the output bytes as they are. Do not re-encode the file.
 
 ## Images, documents and video
 
@@ -44,30 +44,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | [PDFs](/docs/api/documents) | `embed_document` / `detect_document` |
 | [Videos](/docs/api/videos) | `embed_video` / `detect_video` |
 
-Native output is in `result.bytes` for every media type. Embedding also returns `watermark_id`, `request_id`, `content_type`, `filename`, `asset_id`, `source_asset_id` and `storage_delivery_id`.
+For every media type, `result.bytes` holds the watermarked file in its original format. Embedding also returns `watermark_id`, `request_id`, `content_type`, `filename`, `asset_id`, `source_asset_id` and `storage_delivery_id`.
 
-Detection returns the ID, confidence and per-frame/page results—not the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
+Detection returns the watermark it found, a confidence score, and results for each frame or page. It does not return the JSON you sent when you embedded the file. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
 
 <Details title="Client configuration">
 
-`Client::with_options(key, base_url, Duration)` sets the base URL and timeout (default 120 seconds). Use `Options::new().filename(...).idempotency_key(...)` per media request. Later recipes assume an open client.
+`Client::with_options(key, base_url, Duration)` sets the base URL and the timeout. The default timeout is 120 seconds. Use `Options::new().filename(...).idempotency_key(...)` on each media request. The examples below assume you already have a client.
 
 </Details>
 
 ## Retries and recovery
 
-Embedding and video detection retry and poll automatically; image/PDF detection does not. Save an idempotency key before uploading to recover across restarts.
+Embedding and video detection retry and check job status for you. Image and PDF detection do not. Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
 
 | Situation | Action |
 | --- | --- |
-| Client timeout | The accepted job continues; resume or resend identical inputs with the same key |
+| Client timeout | The accepted job keeps running. Resume it, or resend the same inputs with the same key |
 | Resume a job | `get_embed_result(request_id)` / `get_detection_result(request_id)` |
-| Changed inputs | Use a new key; reusing one returns `409` |
-| Collect a saved result | Within 24 hours; see [retention](/docs/api/assets#files-and-records) |
+| Changed inputs | Use a new key. Reusing a key with different inputs returns `409` |
+| Collect a saved result | Within 24 hours. See [retention](/docs/api/assets#files-and-records) |
 
 <Details title="Error types and handling">
 
-Methods return `Result<T, etchv::Error>`. Inspect `kind` (`InvalidInput`, `Transport`, `Timeout`, `Api`, `InvalidResponse`), `status_code`, `message()`, `request_id` and `idempotency_key`. Status `0` means a client-side failure; `is_gone()` identifies HTTP 410.
+Methods return `Result<T, etchv::Error>`. An error has a `kind`: `InvalidInput`, `Transport`, `Timeout`, `Api` or `InvalidResponse`. It also has `status_code`, `message()`, `request_id` and `idempotency_key`. Status `0` means the failure happened on the client side. `is_gone()` tells you the status was HTTP 410.
 
 ```rust
 match client.embed_document(&bytes, &serde_json::json!({"doc": "42"}), Options::new()) {
@@ -80,13 +80,13 @@ match client.embed_document(&bytes, &serde_json::json!({"doc": "42"}), Options::
 }
 ```
 
-See [HTTP errors](/docs/api/errors) and [retry behavior](/docs/api/async#retry-safely). Save the request ID when reporting failures.
+See [HTTP errors](/docs/api/errors) and [retry behavior](/docs/api/async#retry-safely). When you report a failure, include the request ID.
 
 </Details>
 
 ## Asset library
 
-Scopes: `assets:read` for downloads, `assets:write` for edits, `assets:delete` plus owner/admin for deletion. No credits used.
+These calls use no credits. Downloads need the `assets:read` scope, and edits need `assets:write`. Deleting needs `assets:delete` and the owner or admin role.
 
 <Details title="List, edit and download assets">
 
@@ -103,19 +103,19 @@ for item in page.items {
 // Pass page.next_cursor to .cursor(...) with the same filters to continue listing.
 ```
 
-Edits replace metadata and require the current version; reconcile `409` conflicts. `delete_asset` / `delete_assets` delete one asset or 1–50 atomically. [Asset fields, filters and retention](/docs/api/assets).
+An edit replaces the metadata and must send the asset's current version. A `409` conflict means the asset changed since you read it, so fetch it again and redo your edit. `delete_asset` deletes one asset. `delete_assets` deletes 1–50 assets as one action: either all are deleted or none are. [Asset fields, filters and retention](/docs/api/assets).
 
 </Details>
 
 ## Async jobs and webhooks
 
-Submit for a receipt without waiting: `submit_embed` / `submit_detection`; media: `Media::Image`, `Media::Document`, `Media::Video`.
+To start a job without waiting for the result, call `submit_embed` or `submit_detection`. You get a receipt back. Set the media type with `Media::Image`, `Media::Document` or `Media::Video`.
 
-`get_job` for embedding; `get_detection_job` for detection.
+Check an embedding job with `get_job` and a detection job with `get_detection_job`.
 
 <Details title="Submit and collect an async job">
 
-Load the media bytes before submitting.
+Read the file into memory before you submit it.
 
 ```rust
 use etchv::{JobStatus, Media, Options};
@@ -130,13 +130,13 @@ if status.status == JobStatus::Succeeded {
 }
 ```
 
-The webhook is optional (Java/Rust: pass `null` / `None`). Save the receipt. [Job handling](/docs/api/async).
+The webhook is optional. In Java or Rust, pass `null` or `None` to skip it. Save the receipt. [Job handling](/docs/api/async).
 
 </Details>
 
 <Details title="Manage endpoints and verify webhooks">
 
-Methods: `create_webhook`, `list_webhooks`, `update_webhook`, `delete_webhook`, `list_webhook_deliveries`, `redeliver_webhook`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the one-time signing secret.
+Methods: `create_webhook`, `list_webhooks`, `update_webhook`, `delete_webhook`, `list_webhook_deliveries`, `redeliver_webhook`. Viewing webhooks needs `webhooks:read`. Managing them needs `webhooks:write` and the owner or admin role. The signing secret is shown only once, so save it.
 
 ```rust
 // timestamp, signature and event_id are the X-Etchv-Timestamp,
@@ -151,18 +151,18 @@ if event.id != event_id {
 // Deduplicate on event.id, enqueue work, then return 2xx.
 ```
 
-`verify_webhook_signature` checks the signature and timestamp. Your handler must also compare the body ID with `X-Etchv-Event-ID`, as shown. Use raw bytes and a 300-second tolerance. Deduplicate, enqueue, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
+`verify_webhook_signature` checks the signature and timestamp. Your handler must also check that the event ID in the body matches `X-Etchv-Event-ID`, as shown. Pass the raw request bytes and use a 300-second timestamp tolerance. Then skip events you already handled, queue the work and return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
 
 </Details>
 
 ## GPU processing
 
-Pass `Options::new().accelerator(Accelerator::Gpu)` on Business or Enterprise. GPU uses 3× credits; CPU fallback uses normal credits. `result.accelerator` reports the accelerator used. See
+On Business or Enterprise plans, pass `Options::new().accelerator(Accelerator::Gpu)`. GPU processing uses 3× the credits. If processing falls back to CPU, it uses normal credits. `result.accelerator` shows which one was used. See
 [GPU processing](/docs/api/gpu).
 
 ## Choose where results are stored
 
-[Connect your bucket](/docs/storage), then pass its destination ID and optional object key. Omit both for Etchv storage.
+[Connect your bucket](/docs/storage). Then pass its destination ID and, if you like, an object key (the file's path in the bucket). Leave both out to use Etchv storage.
 
 <Details title="Deliver to your bucket">
 
@@ -182,8 +182,8 @@ if let Some(id) = client.get_job(&job.request_id)?.storage_delivery_id {
 }
 ```
 
-After job success, inspect delivery with `storage:read` (earlier reads return `404`). Once `stored`, use `download_storage_delivery` to download.
+After the job succeeds, check the delivery with the `storage:read` scope. Checking before then returns `404`. When the status is `stored`, download the file with `download_storage_delivery`.
 
-With `storage:write` and owner/admin access, `retry_storage_delivery` retries failed/cancelled delivery for free. Manage with: `NewStorageDestination::s3`, `gcs` or `azure`, then `create_storage_destination` and `verify_storage_destination`. Use `create_storage_delivery` to move an existing result. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
+`retry_storage_delivery` retries a failed or cancelled delivery at no cost. It needs `storage:write` and the owner or admin role. To add a destination, build it with `NewStorageDestination::s3`, `gcs` or `azure`. Then call `create_storage_destination` and `verify_storage_destination`. Use `create_storage_delivery` to move an existing result. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
 
 </Details>

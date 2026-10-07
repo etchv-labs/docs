@@ -1,4 +1,4 @@
-Browse, download and organize your files in the [asset library](/dashboard/assets). Every successful embed creates two linked records: the original upload and the watermarked result. Detection creates no assets.
+Browse, download and organize your files in the [asset library](/dashboard/assets). Each successful embed creates two linked records: one for the original upload and one for the watermarked result. Detection does not create assets.
 
 <Facts>
   <Fact label="Files">Up to 1 year on Etchv*</Fact>
@@ -26,13 +26,13 @@ curl --get https://api.etchv.com/assets \
 | `cursor` | Previous response’s `next_cursor` |
 | `kind` | `source` or `watermarked`; omit for both |
 | `media_type` | `image`, `document` or `video`; omit for all |
-| `watermark_id` | Exact 64-character hexadecimal ID |
+| `watermark_id` | Exact 64-character hexadecimal watermark ID |
 
-Returns `{ "items": [...], "next_cursor": "..." }`, newest first. Keep the same filters and organization between pages; stop when `next_cursor` is `null`. Listing omits metadata contents—read an individual record to retrieve them.
+Returns `{ "items": [...], "next_cursor": "..." }`, newest first. Use the same filters and Organization for every page. Stop when `next_cursor` is `null`. The list leaves out metadata contents. Read a single record to get them.
 
 ## Authentication
 
-Send `X-API-Key` on every request, including downloads. Keys only access their organization’s assets.
+Send `X-API-Key` on every request, including downloads. A key can only reach assets in its own Organization.
 
 | Scope | Access |
 | --- | --- |
@@ -40,7 +40,7 @@ Send `X-API-Key` on every request, including downloads. Keys only access their o
 | `assets:write` | Rename and replace metadata |
 | `assets:delete` | Delete; requires an owner or admin |
 
-Existing keys do not gain scopes automatically. Dashboard members can browse and edit; owners and admins can also delete.
+Scopes are the permissions a key has. Existing keys do not gain new scopes automatically. In the dashboard, members can browse and edit. Owners and admins can also delete.
 
 ## Read a record
 
@@ -53,16 +53,16 @@ curl "https://api.etchv.com/assets/$ASSET_ID" \
 
 | Field | Meaning |
 | --- | --- |
-| `id`, `name`, `version` | Stable ID, editable name and edit version |
+| `id`, `name`, `version` | Permanent asset ID, editable name and edit version |
 | `kind`, `parent_asset_id` | Source or output; an output points to its source |
 | `media_type`, `format`, `content_type` | Media category, format and MIME type |
 | `size_bytes`, `sha256` | Stored file size and checksum |
-| `request_id`, `watermark_id` | Creating job and embedded ID; sources have no added ID |
+| `request_id`, `watermark_id` | Job that created it, and its watermark ID; empty for sources, since Etchv adds no watermark to them |
 | `created_at`, `updated_at`, `file_expires_at` | UTC timestamps |
 | `file_available`, `download_url` | Availability and authenticated download path |
 | `metadata` | Your optional JSON record |
 
-Set `include_metadata=false` to omit metadata. Unknown, deleted or foreign assets return `404`.
+Set `include_metadata=false` to leave out metadata. Assets that are unknown, deleted or in another Organization return `404`.
 
 ## Download a file
 
@@ -73,7 +73,7 @@ curl --fail-with-body "https://api.etchv.com/assets/$ASSET_ID/content" \
   -H "X-API-Key: $ETCHV_API_KEY" --output saved-file.png
 ```
 
-Use your asset’s extension. The response preserves its MIME type and supplies an attachment filename. Keep the API key on your server; a download URL alone grants no access.
+Use your asset’s file extension. The response keeps its MIME type and includes a filename. Keep the API key on your server. A download URL alone gives no access.
 
 ## Rename or update metadata
 
@@ -85,10 +85,10 @@ curl --request PATCH "https://api.etchv.com/assets/$ASSET_ID" \
   --data '{"version":1,"name":"Spring campaign","metadata":{"campaign":"spring","recipient":"partner-42"}}'
 ```
 
-Send the current `version` and at least one of `name` or `metadata`. A successful edit increments the version. On `409`, reload the record and reconcile your changes.
+Send the current `version` and at least one of `name` or `metadata`. Each successful edit adds one to the version. If you get `409`, the record changed since you read it: reload it and apply your changes again.
 
 <Callout title="Metadata replaces the existing object">
-Send every field you want to keep. `{}` or `null` clears metadata. Editing a record never changes the file or watermark ID. The original embedding JSON is not saved automatically.
+Send every field you want to keep. `{}` or `null` clears metadata. Editing a record never changes the file or its watermark. The JSON you sent when embedding is not saved automatically.
 </Callout>
 
 <Details title="Name and metadata limits">
@@ -112,17 +112,17 @@ Send every field you want to keep. `{}` or `null` clears metadata. Editing a rec
 | Customer bucket | Your bucket’s retention policy |
 | Asset record | Until deleted, even after the file expires |
 
-If a subscription ends, its files stay for 30 more days, and never past their first year. Subscribing again in that time restores the full year. `file_expires_at` always shows the file’s current date, so read it instead of computing one.
+If a subscription ends, its files stay for 30 more days, but never past their first year. Subscribe again in that time to restore the full year. `file_expires_at` always shows the file’s current expiry date, so read it instead of working one out.
 
-Embedding responses expose `X-Asset-ID` and `X-Source-Asset-ID`; job status exposes `asset_id` and `source_asset_id`. Replays create no extra assets or charges. Asset creation, job completion and credit settlement commit together.
+Embedding responses include `X-Asset-ID` and `X-Source-Asset-ID`. Job status includes `asset_id` and `source_asset_id`. Replays create no extra assets or charges. Creating the asset, finishing the job and charging credits happen together, or not at all.
 
 <Details title="Customer storage and expired files">
 
 After an Etchv file expires, `file_available` is `false` and `download_url` is `null`.
 
-Customer-stored results include `storage_provider`, `storage_destination_id`, `storage_delivery_id` and `storage_status`. Once `stored`, `file_expires_at` is `null`; the asset download endpoint reads from your bucket. Access is checked on download, so a removed object or revoked connection can still fail.
+Results kept in your own bucket include `storage_provider`, `storage_destination_id`, `storage_delivery_id` and `storage_status`. Once the status is `stored`, `file_expires_at` is `null` and the download endpoint reads from your bucket. Access is checked at download time, so a download can still fail if the object was removed or the connection was revoked.
 
-`staging_expires_at` shows how long a delivery can be retried, up to 30 days; `staging_deleted_at` confirms Etchv’s staged output was removed. A failed delivery remains visible and retryable, and its result stays on Etchv meanwhile. Originals stay on Etchv under the retention above.
+`staging_expires_at` shows how long a delivery can be retried, up to 30 days. `staging_deleted_at` confirms that Etchv’s temporary copy of the output was removed. A failed delivery stays visible and can be retried. Meanwhile, its result stays on Etchv. Originals stay on Etchv under the retention rules above.
 
 Connecting a bucket does not move existing files. Use **Move to my storage** on an available Etchv-hosted result. Each result has one destination. See [storage](/docs/storage).
 
@@ -137,24 +137,24 @@ curl --request DELETE "https://api.etchv.com/assets/$ASSET_ID" \
   -H "X-API-Key: $ETCHV_API_KEY"
 ```
 
-For a batch, send 1–50 IDs to `POST /assets/bulk-delete`:
+To delete several at once, send 1–50 asset IDs to `POST /assets/bulk-delete`:
 
 ```json
 { "asset_ids": ["SOURCE_ASSET_ID", "OUTPUT_ASSET_ID"] }
 ```
 
-Returns `204`. A batch succeeds entirely or makes no changes. Unknown or foreign IDs return `404`; repeating an owned deletion is safe.
+Returns `204`. A batch either succeeds completely or changes nothing. Asset IDs that are unknown or in another Organization return `404`. Deleting your own asset again is safe.
 
 <Details title="What deletion removes">
 
-- New reads and downloads stop immediately. Background cleanup retries file removal; an in-progress download may finish.
-- Source and output are independent: select both to delete both.
-- Deleting an output also blocks its job result and idempotent replay with `410`, without another charge.
-- Names and custom metadata are cleared. Minimal cleanup, job and billing records remain.
-- Copies already downloaded elsewhere keep their watermarks. Etchv does not delete objects in your customer bucket.
+- New reads and downloads stop at once. Etchv keeps trying to remove the file in the background. A download already in progress may finish.
+- Source and output are separate. Select both to delete both.
+- Deleting an output also blocks its job result and any replay of the request. Both return `410`, without another charge.
+- Names and custom metadata are cleared. A minimal set of cleanup, job and billing records remains.
+- Copies already downloaded elsewhere keep their watermarks. Etchv does not delete objects in your own bucket.
 
 </Details>
 
 ## SDKs
 
-All [six SDKs](/docs#choose-your-integration) support asset listing, downloads, version-aware edits and deletion. Embedding results include both asset IDs.
+All [six SDKs](/docs#choose-your-integration) support listing, downloads, version-checked edits and deletion of assets. Embedding results include both asset IDs.

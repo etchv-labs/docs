@@ -1,4 +1,5 @@
-Send your API key in the `X-API-Key` header. Keep it in your server’s secret manager.
+Send your API key in the `X-API-Key` header. Store it in your server’s secret
+manager, a tool that keeps passwords and keys safe.
 
 ```sh
 curl https://api.etchv.com/watermarks/images/detect \
@@ -9,8 +10,9 @@ curl https://api.etchv.com/watermarks/images/detect \
 ## Create a key
 
 1. Open [API keys](/dashboard/api-keys) and select your organization.
-2. Choose only the permissions your integration needs.
-3. Copy the secret or download its CSV before closing the confirmation screen. It is shown once.
+2. Choose only the permissions (scopes) your integration needs.
+3. Copy the secret or download its CSV before you close the confirmation screen.
+   Etchv shows it only once.
 
 | Scope | Permission |
 | --- | --- |
@@ -24,22 +26,24 @@ curl https://api.etchv.com/watermarks/images/detect \
 | `storage:read` | Inspect destinations, deliveries and downloads |
 | `storage:write` | Manage/verify connections, move results and retry delivery; owner/admin only |
 
-Keys are organization-scoped. Every request checks membership, expiry, revocation
-and permissions; processing also requires plan access and available credits.
+Each key belongs to one Organization. On every request, Etchv checks Organization
+membership, whether the key has expired or been revoked, and the key's permissions. To process files, your plan must include the format
+and you need available credits.
 
 ## Use keys in the dashboard
 
-The media forms choose an active organization key. Use the dropdown to change it;
-keys missing the required scope are disabled. Members can select their own keys;
-owners/admins can select organization keys. The choice lasts for the browser session.
+The media forms pick an active key from your Organization. Use the dropdown to change
+it. Keys without the required scope are disabled. Members can select their own keys.
+Owners and admins can select any Organization key. Your choice lasts until you
+close the browser session.
 
-Your signed-in session authorizes the selection—no secret needs to be pasted.
-Copyable API examples reflect the selected media, request mode and storage.
+You are already signed in, so you don't need to paste a secret. The API examples you
+can copy match the media, request mode and storage you selected.
 
 ## Keep credentials on your server
 
-Do not put keys in frontend code, mobile bundles, public repositories or URLs.
-Revoke exposed keys and create replacements.
+Do not put keys in frontend code, mobile apps, public code repositories or URLs.
+If a key is exposed, revoke it and create a new one.
 
 ## Authentication errors
 
@@ -51,19 +55,19 @@ Revoke exposed keys and create replacements.
 
 <Details title="Check a key without spending credits">
 
-`GET /auth/api-key` accepts any active key via `X-API-Key`. It returns
+`GET /auth/api-key` accepts any active key in `X-API-Key`. It returns
 `organization_id`, `key_id` and `scopes`, with `Cache-Control: no-store`.
-It consumes no credits and grants no additional permissions.
+It uses no credits and gives no extra permissions.
 
 </Details>
 
 <Details title="Job permissions and management access">
 
-Selecting an existing webhook or verified storage destination uses the job’s
-embed/detect scope. Managing those resources requires the scopes above.
-Asset management uses no watermarking credits.
+A job can use an existing webhook or verified storage destination with only its
+embed or detect scope. Managing those resources needs the scopes above.
+Managing assets uses no watermarking credits.
 
-Account and organization management require a signed-in session; API keys cannot
-replace it. [Webhooks](/docs/api/webhooks) · [Storage](/docs/storage).
+Managing your account and Organization needs a signed-in session. API keys cannot
+do this. [Webhooks](/docs/api/webhooks) · [Storage](/docs/storage).
 
 </Details>

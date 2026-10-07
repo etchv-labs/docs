@@ -1,4 +1,4 @@
-Node.js 22.12+. TypeScript types, ES modules and CommonJS; no runtime dependencies. MIT licensed.
+Needs Node.js 22.12 or later. Includes TypeScript types and works with ES modules and CommonJS. No runtime dependencies. MIT licensed.
 
 ## Install
 
@@ -28,7 +28,7 @@ const detection = await client.detectImage(result.image);
 console.log(detection.watermarkId, detection.confidence);
 ```
 
-`getApiKeyInfo` checks credentials for free. Write output bytes without re-encoding.
+`getApiKeyInfo` checks your key and uses no credits. Save the output bytes exactly as returned; don't re-encode them.
 
 ## Documents and video
 
@@ -38,9 +38,9 @@ console.log(detection.watermarkId, detection.confidence);
 | [PDFs](/docs/api/documents) | `embedDocument` / `detectDocument` |
 | [Videos](/docs/api/videos) | `embedVideo` / `detectVideo` |
 
-Native output is in `result.image` (`Uint8Array`) for every media type. Embedding also returns `watermarkId`, `requestId`, `contentType`, `filename`, `assetId`, `sourceAssetId` and `storageDeliveryId`.
+For every media type, the watermarked file is in `result.image` (`Uint8Array`), in its original format. Embedding also returns `watermarkId`, `requestId`, `contentType`, `filename`, `assetId`, `sourceAssetId` and `storageDeliveryId`.
 
-Detection returns the ID, confidence and per-frame/page results—not the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
+Detection returns the watermark it found, a confidence score and results for each page or frame. It does not return the original JSON. [Result fields](/docs/api/detect#response) · [Credits](/docs/billing#what-uses-credits).
 
 <Details title="Client configuration">
 
@@ -58,18 +58,18 @@ Detection returns the ID, confidence and per-frame/page results—not the origin
 
 ## Errors and recovery
 
-Embedding and video detection retry and poll automatically; image/PDF detection does not. Save an idempotency key before uploading to recover across restarts.
+Embedding and video detection retry and check for results automatically. Image and PDF detection do not. Save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice) before uploading. Then you can recover the request even if your app restarts.
 
 | Situation | Action |
 | --- | --- |
-| Client timeout | The accepted job continues; resume or resend identical inputs with the same key |
+| Client timeout | The accepted job keeps running. Resume it, or resend the same inputs with the same key |
 | Resume a job | `getEmbedResult(requestId)` / `getDetectionResult(requestId)` |
-| Changed inputs | Use a new key; reusing one returns `409` |
+| Changed inputs | Use a new key. Reusing the old key returns `409` |
 | Collect a saved result | Within 24 hours; see [retention](/docs/api/assets#files-and-records) |
 
 <Details title="Error types and handling">
 
-API errors expose `statusCode`, `detail` and `requestId`. `EtchvTimeoutError` uses status `0` and includes recovery identifiers. Network failures and invalid arguments can throw other errors.
+API errors expose `statusCode`, `detail` and `requestId`. `EtchvTimeoutError` uses status `0` and includes the identifiers you need to recover the request. Network failures and invalid arguments can throw other errors.
 
 `EtchvError` subclasses: `AuthenticationError` (401), `PaymentRequiredError` (402), `PermissionDeniedError` (403), `NotFoundError` (404), `ConflictError` (409), `GoneError` (410), `InvalidRequestError` (413/422), `RateLimitError` (429), `ServiceUnavailableError` (5xx).
 
@@ -113,15 +113,15 @@ for (const item of page.items) {
 // Pass cursor: page.next_cursor with the same filters for the next page.
 ```
 
-Edits replace metadata and require the current version; reconcile `409` conflicts. `deleteAsset` / `deleteAssets` delete one asset or 1–50 atomically. [Asset fields, filters and retention](/docs/api/assets).
+An edit replaces all metadata and must send the asset’s current version. A `409` means the asset changed since you read it; reload and resolve the conflict. `deleteAsset` deletes one asset. `deleteAssets` deletes 1–50 at once: either all are deleted or none are. [Asset fields, filters and retention](/docs/api/assets).
 
 </Details>
 
 ## Async jobs and webhooks
 
-Submit for a receipt without waiting: `submitEmbed` / `submitDetection`; media: `images`, `documents`, `videos`.
+To get a receipt without waiting for the result, use `submitEmbed` / `submitDetection`. Media types: `images`, `documents`, `videos`.
 
-`getJob(requestId)` for embedding; `getJob(requestId, { detect: true })` for detection.
+Check status with `getJob(requestId)` for embedding and `getJob(requestId, { detect: true })` for detection.
 
 <Details title="Submit and collect an async job">
 
@@ -144,7 +144,7 @@ The webhook is optional (Java/Rust: pass `null` / `None`). Save the receipt. [Jo
 
 <Details title="Manage endpoints and verify webhooks">
 
-Methods: `createWebhook`, `listWebhooks`, `updateWebhook`, `deleteWebhook`, `listWebhookDeliveries`, `redeliverWebhookEvent`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the one-time signing secret.
+Methods: `createWebhook`, `listWebhooks`, `updateWebhook`, `deleteWebhook`, `listWebhookDeliveries`, `redeliverWebhookEvent`. Use `webhooks:read` to inspect or `webhooks:write` plus owner/admin to manage. Save the signing secret; it is shown only once.
 
 ```typescript
 import { parseWebhookEvent, WebhookVerificationError } from '@etchv-labs/sdk';
@@ -158,18 +158,18 @@ try {
 }
 ```
 
-`parseWebhookEvent` verifies the signature, timestamp and event ID. `verifyWebhookSignature` returns a boolean; `parseWebhookEvent` throws `WebhookVerificationError`. Use raw bytes and a 300-second tolerance. Deduplicate, enqueue, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
+`parseWebhookEvent` verifies the signature, timestamp and event ID. `verifyWebhookSignature` returns a boolean; `parseWebhookEvent` throws `WebhookVerificationError`. Verify the raw request bytes, with a 300-second timestamp tolerance. Skip events you have already handled, queue your work, then return `2xx`. [Verification rules](/docs/api/webhooks#verify-every-delivery).
 
 </Details>
 
 ## GPU processing
 
-Pass `{ accelerator: 'gpu' }` on Business or Enterprise. GPU uses 3× credits; CPU fallback uses normal credits. `result.accelerator` reports the accelerator used. See
+On Business or Enterprise plans, pass `{ accelerator: 'gpu' }`. GPU processing uses 3× credits. If the job falls back to CPU, it uses normal credits. `result.accelerator` reports the accelerator used. See
 [GPU processing](/docs/api/gpu).
 
 ## Choose where results are stored
 
-[Connect your bucket](/docs/storage), then pass its destination ID and optional object key. Omit both for Etchv storage.
+[Connect your bucket](/docs/storage), then pass its destination ID. You can also pass an object key, which is the file’s path in your bucket. Leave both out to use Etchv storage.
 
 <Details title="Deliver to your bucket">
 
@@ -187,8 +187,8 @@ if (job.storage_delivery_id) {
 }
 ```
 
-After job success, inspect delivery with `storage:read` (earlier reads return `404`). Once `stored`, use `downloadStorageDelivery` to download.
+After the job succeeds, check the delivery with `storage:read`. Checking earlier returns `404`. When the status is `stored`, download the file with `downloadStorageDelivery`.
 
-With `storage:write` and owner/admin access, `retryStorageDelivery` retries failed/cancelled delivery for free. Manage with: `createStorageDestination`, `verifyStorageDestination`, `updateStorageDestination`, `deleteStorageDestination`, `createStorageDelivery`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
+With `storage:write` and owner/admin access, `retryStorageDelivery` retries a failed or cancelled delivery at no cost. Manage destinations and deliveries with: `createStorageDestination`, `verifyStorageDestination`, `updateStorageDestination`, `deleteStorageDestination`, `createStorageDelivery`. See [delivery recovery](/docs/storage#retry-retention-and-deletion).
 
 </Details>

@@ -1,4 +1,4 @@
-Use the HTTP status and JSON `detail` to handle a failure. Save `X-Request-ID` when reporting an issue.
+Use the HTTP status and the JSON `detail` field to handle a failure. Save the `X-Request-ID` header when you report a problem.
 
 ## Status codes
 
@@ -7,7 +7,7 @@ Use the HTTP status and JSON `detail` to handle a failure. Save `X-Request-ID` w
 | `401` · Authentication | Check the API key |
 | `402` · Billing | Check the plan, credit balance and pending reservations |
 | `403` · Access | Check [scopes](/docs/authentication), membership, [formats](/docs/billing) and [GPU eligibility](/docs/api/gpu) |
-| `404` · Not found | Check the ID and organization |
+| `404` · Not found | Check the ID in the request (asset, job, webhook or destination) and the Organization |
 | `409` · Conflict | Check idempotency inputs or reload a stale asset version |
 | `410` · Unavailable result | Check the asset library; the file may be expired or deleted |
 | `413` · Too large | Reduce file size, dimensions or frame count |
@@ -18,16 +18,16 @@ Use the HTTP status and JSON `detail` to handle a failure. Save `X-Request-ID` w
 
 ## Rate limits
 
-Limits apply across your organization’s keys and dashboard. See [allowances by plan](/docs/billing#api-rate-limits).
+Limits apply to all your Organization’s keys and dashboard use combined. See [allowances by plan](/docs/billing#api-rate-limits).
 
 | Limit | What counts |
 | --- | --- |
 | Requests per minute | Every authenticated request, including polling, downloads and refused requests; resets each minute |
 | Concurrent operations | Queued or running embedding and async detection jobs, plus durable video detection |
 
-Synchronous image and PDF detection only count toward requests per minute. Replaying an existing job does not require another concurrent slot.
+Synchronous image and PDF detection count only toward requests per minute. Replaying an existing job does not use another concurrent slot.
 
-A `429` reserves no credits. Its `detail` includes `code` (`rate_limited` or `concurrency_limited`) and `limit`; concurrency errors also include `upgrade_url`.
+A `429` response reserves no credits. Its `detail` includes `code` (`rate_limited` or `concurrency_limited`) and `limit`. Concurrency errors also include `upgrade_url`.
 
 | Header | Meaning |
 | --- | --- |
@@ -36,7 +36,7 @@ A `429` reserves no credits. Its `detail` includes `code` (`rate_limited` or `co
 | `X-RateLimit-Remaining` | Requests left this minute |
 | `X-RateLimit-Reset` | Minute reset time, as Unix seconds |
 
-Poll no faster than the job’s `Retry-After`: 6 seconds on Trial/Launch, 2 on other plans. [Webhooks](/docs/api/webhooks) avoid polling. SDKs retry `429` for embedding, video detection and polling within the client timeout; other calls return the error.
+When you poll (check a job’s status again and again), wait at least the job’s `Retry-After`: 6 seconds on Trial and Launch, 2 on other plans. [Webhooks](/docs/api/webhooks) let you skip polling. SDKs retry `429` for embedding, video detection and polling until the client timeout. Other calls return the error.
 
 ## Image limits
 
@@ -51,7 +51,7 @@ Poll no faster than the job’s `Retry-After`: 6 seconds on Trial/Launch, 2 on o
 | PSD/PSB canvas | 4 megapixels |
 | PSD/PSB layers | 64 layers and 16 megapixels total, including two watermark layers |
 
-Send encoded file bytes and a non-empty JSON `data` object. URLs and base64 strings are not file uploads. High-bit-depth and CMYK images are unsupported. HEIC, HEIF and AVIF return `415`; convert them to JPEG, PNG or WebP first.
+Send the encoded file bytes and a JSON `data` object that is not empty. URLs and base64 strings are not file uploads. High-bit-depth and CMYK images are not supported. HEIC, HEIF and AVIF return `415`. Convert them to JPEG, PNG or WebP first.
 
 <Cards>
   <Card href="/docs/api/documents#supported-files" title="PDF limits">Size, page count and document features.</Card>
@@ -60,14 +60,14 @@ Send encoded file bytes and a non-empty JSON `data` object. URLs and base64 stri
 
 ## Credits and retries
 
-Embedding reserves credits on acceptance, charges when verified output is saved, and releases the reservation on terminal failure. Downloads and replays add no charge. During an outage, reservations stay pending until a worker finishes or finalizes the job.
+Embedding reserves credits when Etchv accepts the request. It charges them when the checked output is saved, and releases them if the job fails for good. Downloads and replays add no charge. During an outage, reserved credits stay pending until a worker finishes or closes out the job.
 
 | Situation | Action |
 | --- | --- |
-| Client timeout | Resume by request ID or resend the same inputs and idempotency key; the accepted job continues |
-| Terminal `status: "failed"` | Inspect `error_code`; the same key returns the same failure |
+| Client timeout | Resume with the request ID, or resend the same inputs and [idempotency key](/docs/api/async#retry-safely); the accepted job continues |
+| Final `status: "failed"` | Inspect `error_code`; the same key returns the same failure |
 | Sync image/PDF detection error | Handle in your code; SDKs do not retry these calls automatically |
-| Customer storage upload fails | Inspect [delivery errors](/docs/storage); verified output remains valid and retries add no charge |
+| Upload to your own storage fails | Inspect [delivery errors](/docs/storage); the checked output is still valid and retries add no charge |
 
 See [retry rules](/docs/api/async#retry-safely) and [credit costs](/docs/billing#what-uses-credits).
 

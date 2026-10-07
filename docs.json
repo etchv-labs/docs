@@ -7,31 +7,31 @@
           "slug": "",
           "file": "overview.mdx",
           "title": "Overview",
-          "description": "Watermark images, PDFs and videos. Connect each copy to a record you can recover later."
+          "description": "Etchv watermarking API docs. Add an invisible watermark to images and videos, or watermark PDFs, then detect it to match each copy to your records."
         },
         {
           "slug": "quickstart",
           "file": "quickstart.mdx",
           "title": "Quickstart",
-          "description": "Add a watermark to an image, save the result, and recover its identifier."
+          "description": "Watermarking API quickstart: set an API key, embed an invisible watermark in an image, save the watermark ID, then detect the watermark in a copy."
         },
         {
           "slug": "authentication",
           "file": "authentication.mdx",
           "title": "Authentication",
-          "description": "Create an API key with the permissions your integration needs."
+          "description": "Create an Etchv API key with only the permissions your integration needs, keep it on your server, and fix common API authentication errors."
         },
         {
           "slug": "billing",
           "file": "billing.mdx",
           "title": "Plans and credits",
-          "description": "Understand trial access, format availability, and how credits are used."
+          "description": "Etchv watermarking plans and credits: the 7-day free trial, which formats each plan includes, what uses credits, rate limits and how to cancel."
         },
         {
           "slug": "mcp",
           "file": "mcp.mdx",
           "title": "MCP server",
-          "description": "Watermark and inspect media from your AI assistant."
+          "description": "Use the Etchv MCP server to watermark files, detect watermarks and manage assets from your AI assistant. It runs locally over stdio with your API key."
         }
       ]
     },
@@ -42,25 +42,25 @@
           "slug": "integrations",
           "file": "integrations/index.mdx",
           "title": "Automate with Etchv",
-          "description": "Use Etchv in Zapier, n8n and Make workflows. Early access."
+          "description": "Automate invisible watermarking with Zapier, n8n and Make. Each connector embeds or detects watermarks and collects results. Early access by invitation."
         },
         {
           "slug": "integrations/zapier",
           "file": "integrations/zapier.mdx",
           "title": "Zapier",
-          "description": "Add watermarking and detection to a Zap."
+          "description": "Add invisible watermarking and watermark detection to a Zap. Connect your Etchv account, watermark a file and see how files and retries work."
         },
         {
           "slug": "integrations/n8n",
           "file": "integrations/n8n.mdx",
           "title": "n8n",
-          "description": "Add watermarking and detection to an n8n workflow."
+          "description": "Add invisible watermarking and watermark detection to an n8n workflow with the Etchv community node. Add your API key, then build the workflow."
         },
         {
           "slug": "integrations/make",
           "file": "integrations/make.mdx",
           "title": "Make",
-          "description": "Add watermarking and detection to a Make scenario."
+          "description": "Add invisible watermarking and watermark detection to a Make scenario. Connect your Etchv account, then add modules to submit jobs and collect results."
         }
       ]
     },
@@ -71,55 +71,55 @@
           "slug": "api/async",
           "file": "api/async.mdx",
           "title": "Sync and async",
-          "description": "Wait for a result, or submit a background job and collect it later."
+          "description": "Watermark files synchronously or asynchronously with the Etchv API. Wait for a result or submit a background job, then poll, use webhooks or retry safely."
         },
         {
           "slug": "api/webhooks",
           "file": "api/webhooks.mdx",
           "title": "Webhooks",
-          "description": "Receive and verify signed events when a job finishes."
+          "description": "Etchv watermarking webhooks send signed events when a job finishes. Create an HTTPS endpoint, verify each delivery, and inspect or redeliver events."
         },
         {
           "slug": "api/gpu",
           "file": "api/gpu.mdx",
           "title": "GPU processing",
-          "description": "Run watermarking and detection on a GPU with accelerator=gpu on Business and Enterprise plans."
+          "description": "Run watermarking and watermark detection on a GPU with accelerator=gpu on Business and Enterprise plans. GPU jobs cost 3x credits; CPU is the default."
         },
         {
           "slug": "api/embed",
           "file": "api/embed.mdx",
           "title": "Embed an image",
-          "description": "Add an invisible identifier while preserving the image’s format."
+          "description": "Image watermarking API reference: embed an invisible watermark in an image, keep its original format, and save the watermark ID from the response."
         },
         {
           "slug": "api/detect",
           "file": "api/detect.mdx",
           "title": "Detect a watermark",
-          "description": "Read an image’s watermark and match it to your records."
+          "description": "Detect watermark API reference: send an image, read the watermark Etchv finds, and match its watermark ID to your records. Up to 95 MB and 40 MP."
         },
         {
           "slug": "api/documents",
           "file": "api/documents.mdx",
           "title": "PDF watermarking",
-          "description": "Watermark PDF pages while preserving selectable text and vector content."
+          "description": "PDF watermarking API reference: watermark PDF pages while keeping text selectable and vector content intact. Pages are not flattened. Up to 20 MB, 8 pages."
         },
         {
           "slug": "api/videos",
           "file": "api/videos.mdx",
           "title": "Video watermarking",
-          "description": "Watermark H.264 MP4 and MOV files while preserving supported audio."
+          "description": "Video watermarking API reference: add an invisible watermark to every frame of H.264 MP4 and MOV files while keeping supported audio. Up to 20 MB."
         },
         {
           "slug": "api/assets",
           "file": "api/assets.mdx",
           "title": "Asset library",
-          "description": "Browse, download, and manage originals and watermarked results."
+          "description": "Asset library API: list, download, rename and delete your original and watermarked files. Records stay until you delete them; managing them is free."
         },
         {
           "slug": "api/errors",
           "file": "api/errors.mdx",
           "title": "Errors and limits",
-          "description": "Understand response codes, upload limits, and request recovery."
+          "description": "Etchv watermarking API errors and limits: HTTP status codes, rate limits, image upload limits, how credits work when you retry, and service status."
         }
       ]
     },
@@ -130,25 +130,25 @@
           "slug": "storage",
           "file": "storage/index.mdx",
           "title": "Choose your storage",
-          "description": "Keep results in Etchv storage or connect your own cloud bucket."
+          "description": "Choose where watermarked files are stored: included Etchv storage or your own Amazon S3, Google Cloud Storage or Azure bucket, plus retention and deletion."
         },
         {
           "slug": "storage/s3",
           "file": "storage/s3.mdx",
           "title": "Amazon S3",
-          "description": "Connect an S3 bucket using a cross-account IAM role."
+          "description": "Store watermarked files in your own Amazon S3 bucket. Create a limited cross-account IAM role, add the bucket as a destination, then test it."
         },
         {
           "slug": "storage/gcs",
           "file": "storage/gcs.mdx",
           "title": "Google Cloud Storage",
-          "description": "Connect a Google Cloud Storage bucket with keyless or service account access."
+          "description": "Store watermarked files in your own Google Cloud Storage bucket. Grant Etchv access without a private key (recommended) or with a service account key."
         },
         {
           "slug": "storage/azure",
           "file": "storage/azure.mdx",
           "title": "Azure Blob Storage",
-          "description": "Connect an Azure container using a scoped SAS token."
+          "description": "Store watermarked files in your own Azure Blob Storage container. Create a scoped SAS token, connect and verify it, and renew access before it expires."
         }
       ]
     },
@@ -159,37 +159,37 @@
           "slug": "sdks/node",
           "file": "sdks/node.mdx",
           "title": "Node.js",
-          "description": "Watermark images, PDFs and videos from a Node.js server."
+          "description": "Node.js watermarking SDK for Etchv. Watermark images, PDFs and videos, detect watermarks, and manage assets from your server. TypeScript types included."
         },
         {
           "slug": "sdks/python",
           "file": "sdks/python.mdx",
           "title": "Python",
-          "description": "Watermark images, PDFs and videos in Python."
+          "description": "Python watermarking SDK for Etchv. Watermark images, PDFs and videos, detect watermarks, and manage assets with a fully typed client. Install with pip."
         },
         {
           "slug": "sdks/go",
           "file": "sdks/go.mdx",
           "title": "Go",
-          "description": "Watermark images, PDFs and videos in Go."
+          "description": "Go watermarking SDK for Etchv. Watermark images, PDFs and videos, detect watermarks, and handle assets, async jobs and webhooks from your Go service."
         },
         {
           "slug": "sdks/rust",
           "file": "sdks/rust.mdx",
           "title": "Rust",
-          "description": "Watermark images, PDFs and videos in Rust."
+          "description": "Rust watermarking SDK for Etchv. Watermark images, PDFs and videos, detect watermarks, and handle assets, async jobs and webhooks from your Rust code."
         },
         {
           "slug": "sdks/csharp",
           "file": "sdks/csharp.mdx",
           "title": "C#",
-          "description": "Watermark images, PDFs and videos in .NET."
+          "description": "C# and .NET watermarking SDK for Etchv. Watermark images, PDFs and videos, detect watermarks, and handle assets, async jobs and webhooks in .NET."
         },
         {
           "slug": "sdks/java",
           "file": "sdks/java.mdx",
           "title": "Java",
-          "description": "Watermark images, PDFs and videos in Java."
+          "description": "Java watermarking SDK for Etchv. Watermark images, PDFs and videos, detect watermarks, and handle assets, async jobs and webhooks from your Java app."
         }
       ]
     }

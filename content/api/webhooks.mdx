@@ -1,4 +1,4 @@
-Receive signed events when async jobs finish. Use them to collect results without polling.
+A webhook is a message Etchv sends to your server when an async job finishes. Each message is signed so you can check it came from Etchv. Use webhooks to collect results without polling.
 
 <Facts>
   <Fact label="Transport">HTTPS · port 443</Fact>
@@ -8,7 +8,7 @@ Receive signed events when async jobs finish. Use them to collect results withou
 
 ## Create an endpoint
 
-Use [Dashboard webhooks](/dashboard/webhooks) or the API. Management requires an owner/admin with `webhooks:write`; inspection requires `webhooks:read`.
+Use [Dashboard webhooks](/dashboard/webhooks) or the API. To create or change endpoints, you must be an owner or admin and use a key with `webhooks:write`. To view them, use `webhooks:read`.
 
 ```bash
 curl https://api.etchv.com/webhooks \
@@ -17,15 +17,15 @@ curl https://api.etchv.com/webhooks \
   -d '{"url":"https://your-app.com/webhooks/etchv"}'
 ```
 
-1. Save the one-time `signing_secret` from the `201` response, alongside `id`, `url`, `enabled` and `created_at`. It is separate from your API key.
-2. Pass `?webhook_id=wh_…` when [submitting an async job](/docs/api/async). Only jobs that select this endpoint send events.
-3. Verify each delivery, save its ID and acknowledge promptly.
+1. Save the `signing_secret` from the `201` response. It is shown only once. The response also has `id`, `url`, `enabled` and `created_at`. The secret is separate from your API key.
+2. Pass `?webhook_id=wh_…` when [submitting an async job](/docs/api/async). Only jobs that select this endpoint send events to it.
+3. Verify each delivery, save its event ID and reply quickly.
 
 <Details title="Endpoint security and secret rotation">
 
-Use a public HTTPS URL without credentials or sensitive tokens. Private, loopback, link-local and reserved addresses are blocked on every delivery. Redirects are not followed.
+Use a public HTTPS URL. Do not put passwords or secret tokens in it. Etchv blocks private, loopback, link-local and reserved addresses on every delivery. Redirects are not followed.
 
-To replace a lost secret or rotate it, create a new endpoint and update submissions. Disable the old endpoint after outstanding deliveries finish.
+To replace a lost secret or change it, create a new endpoint and use it in new requests. Disable the old endpoint once its pending deliveries finish.
 
 </Details>
 
@@ -34,12 +34,12 @@ To replace a lost secret or rotate it, create a new endpoint and update submissi
 | Event | Meaning |
 | --- | --- |
 | `watermark.embed.succeeded` | Verified output is ready |
-| `watermark.embed.failed` | Processing failed; reserved credits released |
-| `watermark.detect.succeeded` | Detection finished; fetch the result to see whether a mark was found |
-| `watermark.detect.failed` | Detection failed; reserved credits released |
+| `watermark.embed.failed` | Processing failed; credits held for the job are released |
+| `watermark.detect.succeeded` | Detection finished; fetch the result to see whether a watermark was found |
+| `watermark.detect.failed` | Detection failed; credits held for the job are released |
 | `accelerator.ready` | A requested [GPU wake-up](/docs/api/gpu#start-the-gpu) is ready |
 
-Job events describe terminal outcomes. Individual processing retries do not emit failure events. Event creation, job completion and credit settlement commit together.
+Job events report only the final outcome. A single failed attempt that is retried sends no failure event. The event, the job’s completion and the credit charge are saved together.
 
 <Details title="Event payload example">
 
@@ -61,9 +61,9 @@ Job events describe terminal outcomes. Individual processing retries do not emit
 }
 ```
 
-Job `data` includes the full receipt: format, units, credits, attempts, webhook and asset IDs, and result expiry. On failure, inspect `error_code`. Fetch files or detection results with your API key; events contain no media, original embedding JSON, API keys or download credentials.
+Job `data` includes the full receipt: format, units, credits, attempts, the webhook and asset IDs, and when the result expires. On failure, check `error_code`. Fetch files or detection results with your API key. Events never contain media, the original embedding JSON, API keys or download credentials.
 
-For `accelerator.ready`, `data` contains the wake-up `id`, `accelerator`, `status`, `ready_at` and `warm_until`.
+For `accelerator.ready`, `data` contains the wake-up request’s `id`, `accelerator`, `status`, `ready_at` and `warm_until`.
 
 </Details>
 
@@ -76,10 +76,10 @@ For `accelerator.ready`, `data` contains the wake-up `id`, `accelerator`, `statu
 | `X-Etchv-Signature` | `v1=` plus an HMAC-SHA256 hex digest |
 | `X-Request-ID` | Associated request ID |
 
-1. Verify `timestamp + "." + raw_request_body` using the **entire signing secret**, including `whsec_`.
-2. Reject timestamps more than 300 seconds from your clock. Compare signatures in constant time, before parsing JSON.
-3. Check the body’s `id` matches the header. Atomically save the event ID and enqueue your work.
-4. Return `2xx`, including for saved duplicates. Download and process files outside the handler.
+1. Compute the signature over `timestamp + "." + raw_request_body` using the **entire signing secret**, including `whsec_`.
+2. Reject timestamps more than 300 seconds away from your clock. Compare signatures in constant time (a comparison that takes the same time whether or not they match). Do this before parsing JSON.
+3. Check that the body’s `id` matches the header. Save the event ID and queue your work in one step, so neither happens without the other.
+4. Return `2xx`, also for duplicates you already saved. Download and process files outside the handler.
 
 <Details title="Python signature verification">
 
@@ -105,13 +105,13 @@ def verify_webhook(raw_body: bytes, headers, signing_secret: str) -> bool:
     return hmac.compare_digest(expected, signature)
 ```
 
-After this check, validate the matching event ID and deduplicate. [Official SDKs](/docs#choose-your-integration) also provide signature helpers.
+After this check, confirm the event ID matches and skip duplicates. [Official SDKs](/docs#choose-your-integration) also include signature helpers.
 
 </Details>
 
 ## Delivery guarantees and retries
 
-Expect duplicates and out-of-order events. Each retry has the same ID and JSON body, with a fresh timestamp and signature. The body is a snapshot, not a live job status.
+Expect duplicate events and events out of order. Each retry has the same event ID and JSON body, with a new timestamp and signature. The body shows the job at the time of the event, not its current status.
 
 | Behavior | Rule |
 | --- | --- |
@@ -119,7 +119,7 @@ Expect duplicates and out-of-order events. Each retry has the same ID and JSON b
 | Automatic retry | Network failure, timeout or any non-`2xx`, including redirects |
 | Attempt limit | 10 total, over about 22 hours plus queue time |
 | Handler timeout | 8-second socket timeout; 25-second gateway limit |
-| Job result | Available independently; delivery failure adds no watermarking charge |
+| Job result | Available even if delivery fails; a failed delivery adds no watermarking charge |
 
 <Details title="Retry schedule">
 Delays between attempts: 30 seconds, 2 minutes, 10 minutes, 30 minutes, 1 hour, 2 hours, 4 hours, 6 hours and 8 hours.
@@ -136,22 +136,22 @@ Delays between attempts: 30 seconds, 2 minutes, 10 minutes, 30 minutes, 1 hour, 
 | Inspect deliveries | `GET /webhooks/{id}/deliveries` |
 | Redeliver | `POST /webhooks/{id}/deliveries/{event_id}/redeliver` |
 
-The dashboard shows status, payload and attempts. API listing returns `data` and `next_cursor`; pass the latter as `after`. Records last 30 days, with the last 30 attempts retained. Response bodies are not saved.
+The dashboard shows each delivery’s status, payload and attempts. The API list returns `data` and `next_cursor`. Pass `next_cursor` as `after` to get the next page. Records last 30 days, and the last 30 attempts are kept. Your server’s response bodies are not saved.
 
 <Details title="Redelivery, disabling and deletion">
 
-A `delivered`, `exhausted` or `cancelled` event allows up to 10 manual redeliveries while retained. The endpoint must be enabled; pending events cannot be redelivered concurrently.
+You can manually redeliver a `delivered`, `exhausted` or `cancelled` event up to 10 times while its record is kept. The endpoint must be enabled. An event that is still pending cannot be redelivered at the same time.
 
-Disabling or deleting cancels deliveries at their next dispatch; in-flight requests may arrive. Re-enabling does not requeue cancelled events—redeliver explicitly. Deletion is permanent.
+Disabling or deleting an endpoint cancels its deliveries at their next send. Requests already on the way may still arrive. Turning the endpoint back on does not resend cancelled events; redeliver them yourself. Deletion is permanent.
 
 </Details>
 
 ## Customer storage delivery events
 
-When an async embed selects both `webhook_id` and `storage_destination_id`, it also sends `storage.delivery.succeeded` or `storage.delivery.failed` after upload finishes.
+When an async embed sets both `webhook_id` and `storage_destination_id`, Etchv also sends `storage.delivery.succeeded` or `storage.delivery.failed` after the upload to your bucket finishes.
 
 <Callout title="Watermark complete and file delivered are separate events">
-`watermark.embed.succeeded` confirms verification. Wait for `storage.delivery.succeeded` before using the copy in your bucket.
+`watermark.embed.succeeded` means the watermarked file passed its check. Wait for `storage.delivery.succeeded` before you use the copy in your bucket.
 </Callout>
 
-Storage `data` contains `delivery_id`, `asset_id`, `request_id`, `destination_id`, `status`, `error_code`, `uri` and `public_url` (`null` for private storage). Verify and deduplicate normally; do not assume event order. A manual upload retry creates a new terminal event. See [storage](/docs/storage).
+Storage `data` contains `delivery_id`, `asset_id`, `request_id`, `destination_id`, `status`, `error_code`, `uri` and `public_url` (`null` for private storage). Verify the signature and skip duplicates as usual, and do not assume events arrive in order. A manual upload retry creates a new final event. See [storage](/docs/storage).

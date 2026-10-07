@@ -1,8 +1,8 @@
-Connect with keyless Workload Identity Federation or a service account JSON key. Keyless access uses short-lived tokens and works when your organization blocks service account keys.
+Connect with keyless Workload Identity Federation or a service account JSON key. Federation lets Etchv sign in to Google Cloud with its AWS identity, so no private key is shared. Keyless access uses short-lived tokens. It works even when your organization blocks service account keys.
 
 ## Grant access to your bucket
 
-Create a dedicated service account. Grant a custom role with `storage.objects.create` and `storage.objects.get` on the bucket, restricted to your prefix and its connection probe. See [Google’s permission reference](https://cloud.google.com/storage/docs/access-control/iam-permissions).
+Create a service account used only for Etchv. On the bucket, grant it a custom role with `storage.objects.create` and `storage.objects.get`. Limit the role to your prefix and the small test file (probe) Etchv uses to check the connection. See [Google’s permission reference](https://cloud.google.com/storage/docs/access-control/iam-permissions).
 
 ## Connect without a private key (recommended)
 
@@ -23,7 +23,7 @@ Create a dedicated service account. Grant a custom role with `storage.objects.cr
 }
 ```
 
-Use the **project number** in the provider resource. Save the returned `aws_principal_arn` and `gcs_subject`; the subject uniquely identifies your Etchv organization across its destinations.
+Use the **project number** in the provider resource. Save the returned `aws_principal_arn` and `gcs_subject`. The subject is unique to your Etchv organization and is the same for all its destinations.
 
 ## Trust the exact Etchv identity
 
@@ -45,7 +45,7 @@ principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workload
 Do not grant access to the whole pool, AWS account or every Etchv subject. You need both this federation grant and the object role on the bucket.
 </Callout>
 
-Click **Test connection** or call `POST /storage/destinations/{id}/verify`. The probe checks write and read access. Allow a few minutes for IAM propagation if necessary; unverified destinations cannot receive new requests. See [Google’s AWS federation guide](https://cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds).
+Click **Test connection** or call `POST /storage/destinations/{id}/verify`. The probe checks write and read access. IAM changes can take a few minutes to apply, so wait and try again if needed. A destination that is not verified cannot receive new requests. See [Google’s AWS federation guide](https://cloud.google.com/iam/docs/workload-identity-federation-with-other-clouds).
 
 ## Store outputs
 
@@ -56,7 +56,7 @@ Pass the destination ID in your [embedding request](/docs/storage#select-storage
 | Private | `gs://bucket/key` |
 | Already public | URI plus `https://storage.googleapis.com/bucket/key` |
 
-Etchv does not change IAM or ACLs. [Generation preconditions](https://cloud.google.com/storage/docs/request-preconditions) prevent overwrites. Your bucket controls retention; deleting an Etchv record leaves its cloud object intact.
+Etchv does not change IAM or ACLs. [Generation preconditions](https://cloud.google.com/storage/docs/request-preconditions) prevent overwrites: Etchv writes only when no object with that name exists yet. Your bucket controls how long files are kept. Deleting an Etchv record does not delete its file in your bucket.
 
 ## Optional: service account JSON keys
 
@@ -67,8 +67,8 @@ Choose **Service account JSON key**, or use these request fields instead of the 
 | `gcs_auth` | `"service_account_key"` |
 | `credentials` | Full service account JSON encoded as a string |
 
-The key must use `https://oauth2.googleapis.com/token`. Credentials are encrypted and never returned; a general Google API key will not work.
+The key must use `https://oauth2.googleapis.com/token`. Etchv encrypts credentials and never returns them. A general Google API key will not work.
 
 <Details title="Rotate credentials or change authentication mode">
-Replace `credentials` with `PATCH /storage/destinations/{id}`, then verify before revoking the old key. Keyless destinations do not accept credential uploads. Authentication mode and provider details are immutable; create a new destination to change them.
+Replace `credentials` with `PATCH /storage/destinations/{id}`, then verify before revoking the old key. Keyless destinations do not accept credential uploads. You can't change the authentication mode or provider details later. To change them, create a new destination.
 </Details>

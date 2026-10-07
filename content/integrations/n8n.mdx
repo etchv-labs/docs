@@ -1,21 +1,21 @@
-Use the Etchv community node in self-hosted n8n. [Request early access](mailto:hello@etchv.com) for the package and installation steps. Hosted accounts need administrator permission for community nodes.
+Use the Etchv community node in self-hosted n8n. A community node is an add-on not built by the n8n team. [Request early access](mailto:hello@etchv.com) for the package and install steps. Hosted n8n accounts need an administrator to allow community nodes.
 
 ## Add your credentials
 
-Create an [API key](/dashboard/api-keys) with `watermarks:embed`, `watermarks:detect` and/or `assets:read`. Save it as **Etchv API** credentials. Connection testing uses no credits.
+Create an [API key](/dashboard/api-keys) with `watermarks:embed`, `watermarks:detect` and/or `assets:read`. Save it as **Etchv API** credentials. Testing the connection uses no credits.
 
 ## Build a workflow
 
 | Step | Configuration |
 | --- | --- |
-| Submit Watermark / Submit Detection | Choose Image, PDF or Video; set the input binary field, usually `data` |
-| Reference and retry key | For embedding, supply non-empty JSON. Use a stable event ID plus operation as the idempotency key |
-| Wait → Get Job Status | Check `status_url` about once a minute while pending; stop after 35 minutes |
+| Submit Watermark / Submit Detection | Choose Image, PDF or Video. Set the input binary field, usually `data` |
+| Reference and retry key | For embedding, supply non-empty JSON. For the [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice), combine the source event and the operation so it stays the same |
+| Wait → Get Job Status | Check `status_url` about once a minute while the job is pending. Stop after 35 minutes |
 | Get Job Result | On success, select **Watermark** for binary `data` or **Detection** for JSON |
-| Handle failure | Route `error_code` and `request_id` to your error step |
+| Handle failure | Send `error_code` and `request_id` to your error step |
 
-Save `status_url` and `result_url`. Check the existing job instead of submitting a new one.
+Save `status_url` and `result_url`. Check the existing job instead of sending a new one.
 
-**Download Asset** takes an `asset_id` and requires `assets:read`. Job results last 24 hours; retained assets follow the [asset download window](/docs/api/assets#files-and-records).
+**Download Asset** takes an `asset_id` and needs `assets:read`. Job results last 24 hours. Kept assets follow the [asset download window](/docs/api/assets#files-and-records).
 
 See [shared workflow requirements](/docs/integrations#before-you-connect) for file limits, reference data and safe retries.

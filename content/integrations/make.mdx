@@ -8,15 +8,15 @@ Create an [API key](/dashboard/api-keys) with `watermarks:embed`, `watermarks:de
 
 | Step | Configuration |
 | --- | --- |
-| Submit Watermark / Submit Detection | Map filename and binary file data; choose Image, PDF or Video |
-| Reference and retry key | For embedding, supply non-empty JSON. Map a stable source-event idempotency key |
-| Get Job Status | Check `status_url` about once a minute while pending, up to 35 minutes |
-| Get Watermarked File | On embed success, collect binary output using `result_url` |
-| Get Detection Result | On detection success, collect JSON using `result_url` |
-| Handle failure | Route `request_id` and `error_code` to your error handler |
+| Submit Watermark / Submit Detection | Map the filename and binary file data. Choose Image, PDF or Video |
+| Reference and retry key | For embedding, supply non-empty JSON. Map an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice) based on the source event, so it stays the same |
+| Get Job Status | Check `status_url` about once a minute while the job is pending, up to 35 minutes |
+| Get Watermarked File | When embedding succeeds, collect the binary output using `result_url` |
+| Get Detection Result | When detection succeeds, collect the JSON using `result_url` |
+| Handle failure | Send `request_id` and `error_code` to your error handler |
 
-Provide a filename with the original extension to file-result modules. **Download Asset** retrieves a retained file by ID.
+Give file-result modules a filename with the original extension. **Download Asset** gets a kept file by its `asset_id`.
 
-Retry identical inputs with the same idempotency key. Collect job results within 24 hours. If you chose a bucket, check [storage delivery](/docs/api/webhooks#customer-storage-delivery-events) separately from watermark success.
+To retry, send the same inputs with the same idempotency key. Collect job results within 24 hours. If you chose a bucket, check [storage delivery](/docs/api/webhooks#customer-storage-delivery-events) separately. A successful watermark does not mean the file reached your bucket.
 
 See [shared workflow requirements](/docs/integrations#before-you-connect) and [async jobs](/docs/api/async).
