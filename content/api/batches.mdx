@@ -1,0 +1,374 @@
+Watermark up to 100 files in one batch, each with its own `data`. Create the
+batch, upload each file to its signed URL, start it, then poll one status URL
+or wait for one webhook event. Each file becomes its own embedding job, at the
+same credits as a single request.
+
+<Facts>
+  <Fact label="Files">Up to 100 per batch</Fact>
+  <Fact label="Upload URLs">Valid 6 hours · start within 24</Fact>
+  <Fact label="Results">Kept 24 hours · optional zip</Fact>
+</Facts>
+
+## When to use a batch
+
+| You have | Use |
+| --- | --- |
+| One file, or files that arrive one at a time | A single [sync or async request](/docs/api/async) |
+| A folder of files to watermark now, each with its own reference | A batch |
+| Files already in one zip of up to 55 MB | A batch [from one zip](#send-one-zip-instead) |
+| One file for many recipients | A batch with one item per recipient, each with its own `data` |
+
+A loop of async requests soon reaches your plan's concurrency limit and
+returns `429`. Batch files never do: they wait their turn and run within the
+limit. You poll one URL instead of one per file. Batches watermark images, PDFs
+and video. Detection is not batched. Use a key with `watermarks:embed`.
+
+## Create a batch
+
+List every file with its name, its exact size in bytes and its `data`. An
+`Idempotency-Key` header is required.
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/batches \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: contracts-2026-10' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "archive": true,
+    "items": [
+      {"filename": "contract-acme.pdf", "size": 1258291, "data": {"recipient": "acme"}},
+      {"filename": "contract-bolt.pdf", "size": 943718, "data": {"recipient": "bolt"}}
+    ]
+  }' \
+  -o batch.json
+```
+
+| Field | Meaning |
+| --- | --- |
+| `items[].filename` | Up to 255 characters. Its extension sets the media type: an image, `pdf`, `mp4` or `mov` |
+| `items[].size` | The file's exact length in bytes |
+| `items[].data` | A JSON object that is not empty, up to 8 KB, as for a [single request](/docs/api/embed) |
+| `archive` | `true` also zips every result into one download. Default `false` |
+| `webhook_id` | Optional [webhook endpoint](/docs/api/webhooks) for the event sent when the batch ends |
+| `accelerator` | `cpu` or `gpu`, as for a single request. See [GPU processing](/docs/api/gpu) |
+| `storage_destination_id` | Deliver every result to [your bucket](/docs/storage). Cannot be combined with `archive` |
+
+The whole request is checked before anything is created. One unsupported file
+type, missing `data` or file over its size limit returns `422` or `413`, and no
+batch exists.
+
+The `Idempotency-Key` names one batch. For 30 days, the same key with the same
+items returns `200` with that batch and fresh upload URLs; the same key with
+different items returns `409`. Batch records are then removed, and reusing the
+key is refused with `409`. Always use a new key for each new batch.
+
+<Details title="Example response">
+
+```json
+{
+  "batch_id": "bat_7f3a0c9e2b4d4f6a8e1c5d3b9a7f2e10",
+  "status": "draft",
+  "item_count": 2,
+  "archive": true,
+  "accelerator": "cpu",
+  "webhook_id": null,
+  "storage_destination_id": null,
+  "counts": {"pending": 2, "accepted": 0, "rejected": 0, "succeeded": 0, "failed": 0, "in_progress": 0},
+  "credits": {"reserved": 0, "charged": 0, "refunded": 0},
+  "cancel_requested": false,
+  "created_at": "2026-10-09T14:02:00+00:00",
+  "started_at": null,
+  "completed_at": null,
+  "upload_expires_at": "2026-10-10T14:02:00+00:00",
+  "status_url": "/watermarks/batches/bat_7f3a0c9e2b4d4f6a8e1c5d3b9a7f2e10",
+  "archive_status": null,
+  "archive_url": "/watermarks/batches/bat_7f3a0c9e2b4d4f6a8e1c5d3b9a7f2e10/archive",
+  "archive_expires_at": null,
+  "items": [
+    {
+      "index": 0,
+      "filename": "contract-acme.pdf",
+      "size": 1258291,
+      "upload_id": "upl_…",
+      "request_id": null,
+      "status": "pending",
+      "error_code": null,
+      "error_detail": null,
+      "credits": null,
+      "upload": {
+        "method": "PUT",
+        "url": "https://uploads.etchv.com/document/upl_….pdf?…",
+        "expires_at": "2026-10-09T20:02:00+00:00"
+      }
+    }
+  ]
+}
+```
+
+The second item has the same shape. `archive_status`, `archive_url` and
+`archive_expires_at` appear only when `archive` is `true`.
+
+</Details>
+
+## Upload each file
+
+Send each file's bytes to its `upload.url` with `PUT`, as for a
+[large-file upload](/docs/api/uploads#upload-the-file). The URL is signed: do
+not add your API key and do not change it.
+
+```sh
+jq -r '.items[] | select(.upload) | [.filename, .upload.url] | @tsv' batch.json |
+  while IFS=$'\t' read -r name url; do
+    curl --fail -X PUT "$url" --upload-file "$name"
+  done
+```
+
+Upload URLs last 6 hours. To get fresh ones, repeat the create request with the
+same `Idempotency-Key` and items. An item whose file already arrived comes back
+with `upload_received: true` and no `upload`, so you upload only the rest. A
+draft must be started within 24 hours of its creation. Upload IDs in a batch
+work only for that batch.
+
+## Start the batch
+
+```sh
+BATCH_ID=$(jq -r .batch_id batch.json)
+curl --fail-with-body -X POST "https://api.etchv.com/watermarks/batches/$BATCH_ID/start" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+`202` means this call started the batch; `200` means it had already started,
+and it is safe to repeat. A draft past its 24 hours returns `410`. Etchv then
+checks each file in order, exactly as a single request would, and reserves its
+credits. A file that is missing or fails its checks is rejected on its own; the
+rest of the batch continues.
+
+## Poll for progress
+
+```sh
+curl --fail-with-body -i "https://api.etchv.com/watermarks/batches/$BATCH_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+While the batch runs, wait as long as the `Retry-After` header says before the
+next poll. Each poll is one request toward your per-minute
+[rate limit](/docs/api/errors#rate-limits), whatever the number of files. The
+response lists every item, and `counts` and `credits` sum them up.
+
+| Batch status | Meaning |
+| --- | --- |
+| `draft` | Waiting for uploads and a start |
+| `starting` | Files are being checked and their credits reserved |
+| `processing` | Files run within your plan's concurrency |
+| `assembling` | Building the zip of results (`archive: true` only) |
+| `completed` | Done; at least one file was watermarked |
+| `failed` | Done; no file was watermarked |
+| `cancelled` | Done after a [cancel](#cancel-a-batch) |
+| `expired` | A draft that was not started within 24 hours |
+
+`counts` has `pending`, `accepted`, `rejected`, `succeeded`, `failed` and
+`in_progress`. `credits` has `reserved`, `charged` and `refunded`.
+
+## Item statuses and partial failure
+
+A batch is not all or nothing. Each file succeeds or fails on its own, and you
+pay only for the files that are watermarked.
+
+| Item status | Meaning |
+| --- | --- |
+| `pending` | Waiting for its upload or its check |
+| `rejected` | Refused before processing; `error_code` says why. Never charged |
+| `queued` | Accepted with credits reserved; waiting for a free slot |
+| `running` | Being watermarked |
+| `retrying` | An attempt failed and will run again |
+| `succeeded` | `result_url` is ready; `credits` shows the charge |
+| `failed` | Processing failed, or the file was canceled while waiting; credits refunded and `credits` is `0` |
+
+Rejected items carry an `error_code` such as `upload_not_received` or
+`insufficient_credits`, and often an `error_detail`. There is no `cancelled`
+item status: a canceled file is `rejected` or `failed` with `error_code`
+`cancelled`. Failed items carry the
+same `error_code` a single job would. If your credits run out, that file and
+every later one are rejected, and earlier files still run. See
+[batch item errors](/docs/api/errors#batch-item-errors).
+
+To retry rejected or failed files, create a new batch with only those files
+and a new `Idempotency-Key`.
+
+## Download the results
+
+Every accepted item has a `request_id`, `status_url` and `result_url`, the same
+as an [async job](/docs/api/async). GET `result_url` with your API key to
+download the watermarked file and its `X-Watermark-ID`. Results last 24 hours.
+Each job's receipt also includes the `batch_id`.
+
+With `archive: true`, download every result as one zip once the batch is done:
+
+```sh
+curl --fail-with-body -o contracts-watermarked.zip \
+  "https://api.etchv.com/watermarks/batches/$BATCH_ID/archive" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+The zip holds each watermarked file, named like `000-contract-acme-watermarked.pdf`
+after its index, and a `manifest.json`. Its `files` list gives each file's
+index and `request_id`; its `failed` list gives each file that was not
+watermarked and its `error_code`. That code is `result_unavailable` for a
+result deleted before the zip was made.
+
+The batch's `archive_status` is `null` until the files are done, then
+`queued`, `assembling` and `ready`. It ends as `too_large` over 1 GB, `empty`
+when no file succeeded or the batch was canceled, or `failed` when the zip
+could not be built.
+
+| Status | Meaning |
+| --- | --- |
+| `200` | The zip |
+| `202` | The batch is `starting`, `processing` or `assembling`. Wait for `Retry-After`, then try again |
+| `409` · `batch_not_started` | The batch is still a draft; [start it](#start-the-batch) first |
+| `409` · `archive_not_requested` | The batch was created without `archive: true`; use each `result_url` |
+| `409` · `archive_too_large` | The results exceed 1 GB; use each `result_url` |
+| `409` · `archive_unavailable` | No file succeeded, the batch was canceled, or the zip could not be built |
+| `410` | The zip expired after 24 hours, or the batch is an expired draft |
+
+## Send one zip instead
+
+If your files are already in one zip of up to 55 MB, send it with a manifest
+in one request. There is no upload or start step: the batch starts at once.
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/batches/zip \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: contracts-2026-10-zip' \
+  -F 'archive=@contracts.zip' \
+  --form-string 'manifest={"archive":true,"items":[{"filename":"contracts/acme.pdf","data":{"recipient":"acme"}},{"filename":"contracts/bolt.pdf","data":{"recipient":"bolt"}}]}'
+```
+
+The `manifest` takes the same options as a JSON batch. Its items have no
+`size`, and each `filename` is a member's exact path inside the zip. A `202`
+returns the batch already `starting`; poll it as above. A retry with the same
+key and zip returns `200` with the same batch.
+
+<Details title="Zip rules">
+
+- The manifest and the zip must list the same files, each once.
+- Folders and system entries are ignored and must not be listed: `__MACOSX/`, `.DS_Store`, `Thumbs.db` and `desktop.ini`.
+- Paths must be relative, without `..` or backslashes. Encrypted members are refused.
+- Each member must fit its media type's size limit, otherwise `413`.
+- Members may add up to 512 MB once unpacked, and none may be compressed more than 100:1.
+
+</Details>
+
+## Cancel a batch
+
+```sh
+curl --fail-with-body -X POST "https://api.etchv.com/watermarks/batches/$BATCH_ID/cancel" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+A draft is canceled at once and nothing is charged. In a started batch, files
+not yet checked become `rejected`, and files waiting for a slot become `failed`
+and are refunded; both have `error_code` `cancelled`. A canceled file's
+`result_url` answers `409` with that code. Files already running, or next in
+line, finish and are charged if they succeed. The batch then ends as
+`cancelled` without a zip.
+
+Once set, `cancel_requested` stays `true`. A cancel
+while the zip is being assembled has no effect: the batch completes with its
+zip.
+
+## List batches
+
+`GET /watermarks/batches` returns your Organization's batches, newest first,
+without their items. It returns `data` and `next_cursor`. Pass `limit` (up to
+50, default 20) and pass `next_cursor` as `before` to get the next page.
+Batch records are kept for 30 days.
+
+## Batch webhook events
+
+Pass `webhook_id` when you create the batch to receive one event when it ends:
+`watermark.batch.completed`, `watermark.batch.failed` or
+`watermark.batch.cancelled`. The event has the batch's counts, credits and
+links, not its items. Files in a batch send no job events of their own. A draft
+you cancel sends no event. [Payload and verification](/docs/api/webhooks#events).
+
+## Limits
+
+| Limit | Value |
+| --- | --- |
+| Files per batch | 100 |
+| File size | Images 50 MB · PDFs and video 20 MB |
+| `data` per file | 8 KB as JSON |
+| Upload URL | Valid 6 hours; repeat the create request for fresh URLs |
+| Draft | Must be started within 24 hours |
+| Zip request | 55 MB; 512 MB unpacked |
+| Results and zip | Kept 24 hours; zip up to 1 GB of results |
+
+Each file must also meet the format limits of a single
+[image](/docs/api/embed), [PDF](/docs/api/documents) or
+[video](/docs/api/videos) request. Batch files run within your plan's
+concurrency. On plans that run two or more at once, one slot stays free for
+your direct requests. On Launch and the trial, which run one at a time, a
+direct request can return `429` while a batch file runs.
+
+## SDKs
+
+The Python and Node.js SDKs handle the upload steps. `submit_batch` (Node.js:
+`submitBatch`) creates the batch, uploads every file to its signed URL and
+starts it, then returns without waiting. `wait_for_batch` (`waitForBatch`)
+polls until the batch ends, honoring `Retry-After`.
+`download_batch_archive_to` (`downloadBatchArchiveTo`) streams the zip to a
+file without holding it in memory.
+
+If an upload fails, the `BatchSubmitError` carries the `batch_id` and
+`idempotency_key` (Node.js: `batchId`, `idempotencyKey`). Call submit again
+with that key and the same items to upload only the missing files and start the
+batch.
+
+```python
+import os
+from pathlib import Path
+from etchv import Etchv
+
+with Etchv(os.environ["ETCHV_API_KEY"]) as client:
+    batch = client.submit_batch(
+        [{"filename": path.name, "file": path, "data": {"recipient": path.stem}}
+         for path in sorted(Path("contracts").glob("*.pdf"))],
+        archive=True,
+        idempotency_key="contracts-2026-10",
+    )
+    done = client.wait_for_batch(batch.batch_id, timeout=1800)
+    for item in done.items:
+        if item.status != "succeeded":
+            print(item.filename, item.error_code)  # not charged, or refunded
+    client.download_batch_archive_to(batch.batch_id, "contracts-watermarked.zip")
+```
+
+```typescript
+import { readdir } from 'node:fs/promises';
+import { Etchv } from '@etchv-labs/sdk';
+
+const apiKey = process.env.ETCHV_API_KEY;
+if (!apiKey) throw new Error('Set ETCHV_API_KEY on your server');
+const client = new Etchv({ apiKey });
+const names = (await readdir('contracts')).filter((name) => name.endsWith('.pdf'));
+const batch = await client.submitBatch(
+  names.map((name) => ({
+    filename: name,
+    file: `contracts/${name}`,
+    data: { recipient: name.replace(/\.pdf$/, '') },
+  })),
+  { archive: true, idempotencyKey: 'contracts-2026-10' },
+);
+const done = await client.waitForBatch(batch.batch_id, { timeout: 30 * 60_000 });
+for (const item of done.items ?? []) {
+  if (item.status !== 'succeeded') console.log(item.filename, item.error_code); // not charged, or refunded
+}
+await client.downloadBatchArchiveTo(batch.batch_id, 'contracts-watermarked.zip');
+```
+
+Without an archive, `iter_batch_results` (`iterBatchResults`) waits for the
+batch, then yields each item in order. When `ok` is true, `result` holds the
+watermarked file; otherwise `error_code` (`errorCode`) says why. See
+[Node.js](/docs/sdks/node) and [Python](/docs/sdks/python) for client setup and
+error handling.

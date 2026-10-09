@@ -57,6 +57,7 @@ a receipt. Save its `request_id`, `status_url` and `result_url`.
 ```json
 {
   "request_id": "req_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "batch_id": null,
   "status": "queued",
   "operation": "embed",
   "format": "PDF",
@@ -76,7 +77,8 @@ a receipt. Save its `request_id`, `status_url` and `result_url`.
 The `Location` header points to the status URL. URLs are relative to
 `https://api.etchv.com`. To use them, you need a key from the same Organization
 with the matching scope. Receipts also show the accelerator you asked for, the one
-that ran, and any storage you selected.
+that ran, and any storage you selected. `batch_id` is set when the job is one
+file of a [batch](/docs/api/batches).
 
 </Details>
 
@@ -132,6 +134,14 @@ not add a charge or send another webhook event. To get an event again, ask for a
 - Encrypted processing copies become due for deletion after **7 days**. Job and billing metadata stay for accounting and to block repeated jobs. The original embedding JSON is not kept.
 
 </Details>
+
+## Many files at once
+
+To watermark up to 100 files, each with its own `data`, send one
+[batch](/docs/api/batches) instead of a loop of async requests. Batch files wait
+their turn within your plan's concurrency instead of returning `429`. You poll
+one status URL, and one webhook event arrives when the batch ends. Each file
+costs the same credits as a single request.
 
 ## Try either mode in the dashboard
 

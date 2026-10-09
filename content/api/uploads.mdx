@@ -97,6 +97,7 @@ full 100 MB.
 | `409` | `upload_in_use` | Another request is using it; wait for that one |
 | `409` | `upload_consumed` | Create a new upload, or retry with the original `Idempotency-Key` |
 | `409` | `upload_rejected` | The file could not be used; fix it and create a new upload |
+| `409` | `upload_in_batch` | The upload belongs to a [batch](/docs/api/batches); start the batch to use it |
 | `410` | | The upload expired; create a new one |
 | `422` | | The upload was created for another kind of request; it is rejected |
 | `503` | | Too many large files at once; retry after `Retry-After` seconds |

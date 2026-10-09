@@ -17,9 +17,9 @@ curl https://api.etchv.com/webhooks \
   -d '{"url":"https://your-app.com/webhooks/etchv"}'
 ```
 
-1. Save the `signing_secret` from the `201` response. It is shown only once. The response also has `id`, `url`, `enabled` and `created_at`. The secret is separate from your API key.
-2. Pass `?webhook_id=wh_…` when [submitting an async job](/docs/api/async). Only jobs that select this endpoint send events to it.
-3. Verify each delivery, save its event ID and reply quickly.
+- Save the `signing_secret` from the `201` response. It is shown only once. The response also has `id`, `url`, `enabled` and `created_at`. The secret is separate from your API key.
+- Pass `?webhook_id=wh_…` when [submitting an async job](/docs/api/async), or `webhook_id` when [creating a batch](/docs/api/batches). Only jobs and batches that select this endpoint send events to it.
+- Verify each delivery, save its event ID and reply quickly.
 
 <Details title="Endpoint security and secret rotation">
 
@@ -37,9 +37,12 @@ To replace a lost secret or change it, create a new endpoint and use it in new r
 | `watermark.embed.failed` | Processing failed; credits held for the job are released |
 | `watermark.detect.succeeded` | Detection finished; fetch the result to see whether a watermark was found |
 | `watermark.detect.failed` | Detection failed; credits held for the job are released |
+| `watermark.batch.completed` | A [batch](/docs/api/batches) ended with at least one file watermarked |
+| `watermark.batch.failed` | A batch ended with no file watermarked; credits for failed files are refunded |
+| `watermark.batch.cancelled` | A canceled batch ended; files that did not run are not charged |
 | `accelerator.ready` | A requested [GPU wake-up](/docs/api/gpu#start-the-gpu) is ready |
 
-Job events report only the final outcome. A single failed attempt that is retried sends no failure event. The event, the job’s completion and the credit charge are saved together.
+Job events report only the final outcome. A single failed attempt that is retried sends no failure event. The event, the job’s completion and the credit charge are saved together. A batch sends one event when it ends; the files in it send no job events.
 
 <Details title="Event payload example">
 
@@ -67,6 +70,32 @@ For `accelerator.ready`, `data` contains the wake-up request’s `id`, `accelera
 
 </Details>
 
+<Details title="Batch event payload example">
+
+```json
+{
+  "id": "evt_4c1e9b7a2f3d5e6081a9c4b2d7e3f5a60b8c1d2e3f4a5b6c7d8e9f0a1b2c3d4e",
+  "type": "watermark.batch.completed",
+  "api_version": "2026-09-12",
+  "created_at": "2026-10-09T14:09:00+00:00",
+  "data": {
+    "batch_id": "bat_7f3a0c9e2b4d4f6a8e1c5d3b9a7f2e10",
+    "status": "completed",
+    "item_count": 4,
+    "counts": {"pending": 0, "accepted": 4, "rejected": 0, "succeeded": 3, "failed": 1, "in_progress": 0},
+    "credits": {"reserved": 90, "charged": 82, "refunded": 8},
+    "status_url": "/watermarks/batches/bat_7f3a0c9e2b4d4f6a8e1c5d3b9a7f2e10",
+    "archive_status": "ready",
+    "archive_url": "/watermarks/batches/bat_7f3a0c9e2b4d4f6a8e1c5d3b9a7f2e10/archive",
+    "archive_expires_at": "2026-10-10T14:09:00+00:00"
+  }
+}
+```
+
+The `archive_*` fields appear only when the batch asked for a zip. Read `status_url` with your API key for each file’s status and `result_url`. The event never lists the files.
+
+</Details>
+
 ## Verify every delivery
 
 | Header | Value |
@@ -76,10 +105,10 @@ For `accelerator.ready`, `data` contains the wake-up request’s `id`, `accelera
 | `X-Etchv-Signature` | `v1=` plus an HMAC-SHA256 hex digest |
 | `X-Request-ID` | Associated request ID |
 
-1. Compute the signature over `timestamp + "." + raw_request_body` using the **entire signing secret**, including `whsec_`.
-2. Reject timestamps more than 300 seconds away from your clock. Compare signatures in constant time (a comparison that takes the same time whether or not they match). Do this before parsing JSON.
-3. Check that the body’s `id` matches the header. Save the event ID and queue your work in one step, so neither happens without the other.
-4. Return `2xx`, also for duplicates you already saved. Download and process files outside the handler.
+- Compute the signature over `timestamp + "." + raw_request_body` using the **entire signing secret**, including `whsec_`.
+- Reject timestamps more than 300 seconds away from your clock. Compare signatures in constant time (a comparison that takes the same time whether or not they match). Do this before parsing JSON.
+- Check that the body’s `id` matches the header. Save the event ID and queue your work in one step, so neither happens without the other.
+- Return `2xx`, also for duplicates you already saved. Download and process files outside the handler.
 
 <Details title="Python signature verification">
 
@@ -142,7 +171,7 @@ The dashboard shows each delivery’s status, payload and attempts. The API list
 
 You can manually redeliver a `delivered`, `exhausted` or `cancelled` event up to 10 times while its record is kept. The endpoint must be enabled. An event that is still pending cannot be redelivered at the same time.
 
-Disabling or deleting an endpoint cancels its deliveries at their next send. Requests already on the way may still arrive. Turning the endpoint back on does not resend cancelled events; redeliver them yourself. Deletion is permanent.
+Disabling or deleting an endpoint cancels its deliveries at their next send. Requests already on the way may still arrive. Turning the endpoint back on does not resend canceled events; redeliver them yourself. Deletion is permanent.
 
 </Details>
 

@@ -80,6 +80,12 @@
           "description": "Upload large files to Etchv once with a signed URL, then watermark them or detect watermarks in delivered files up to 192 MB by upload ID."
         },
         {
+          "slug": "api/batches",
+          "file": "api/batches.mdx",
+          "title": "Batches",
+          "description": "Bulk watermarking API: watermark up to 100 images, PDFs or videos in one batch, each with its own data, then download each result or one zip."
+        },
+        {
           "slug": "api/webhooks",
           "file": "api/webhooks.mdx",
           "title": "Webhooks",

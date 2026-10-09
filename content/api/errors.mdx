@@ -25,7 +25,7 @@ Limits apply to all your Organization’s keys and dashboard use combined. See [
 | Requests per minute | Every authenticated request, including polling, downloads and refused requests; resets each minute |
 | Concurrent operations | Queued or running embedding and async detection jobs, plus durable video detection |
 
-Synchronous image and PDF detection count only toward requests per minute. Replaying an existing job does not use another concurrent slot.
+Synchronous image and PDF detection count only toward requests per minute. Replaying an existing job does not use another concurrent slot. [Batch](/docs/api/batches) files are never refused for concurrency; they wait their turn, and each batch poll is one request.
 
 A `429` response reserves no credits. Its `detail` includes `code` (`rate_limited` or `concurrency_limited`) and `limit`. Concurrency errors also include `upgrade_url`.
 
@@ -57,6 +57,34 @@ Send the encoded file bytes and a JSON `data` object that is not empty. URLs and
   <Card href="/docs/api/documents#supported-files" title="PDF limits">Size, page count and document features.</Card>
   <Card href="/docs/api/videos#supported-files" title="Video limits">Codecs, duration, frames and audio.</Card>
 </Cards>
+
+## Batch limits
+
+| Limit | Maximum |
+| --- | --- |
+| Items per batch | 100 |
+| Zip request | 55 MB, sent to `/watermarks/batches/zip` |
+| Batch archive | 1 GB of results; larger batches deliver each `result_url` only |
+
+Each file in a batch also meets the limits of a single request. [All batch limits](/docs/api/batches#limits).
+
+## Batch item errors
+
+A batch item that is `rejected` was refused before processing and is never charged. Its `error_code` says why; `error_detail` often adds the reason. An item that `failed` during processing has the same `error_code` a single job would, and its credits are refunded.
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `upload_not_received` | The file was not uploaded before the batch started | Send it in a new batch |
+| `upload_size_mismatch` | The uploaded file’s size differs from the declared `size` | Declare the exact size in bytes |
+| `upload_expired` | The upload expired before the file was checked | Send it in a new batch |
+| `upload_rejected` | The uploaded file was already refused | Fix the file and send it in a new batch |
+| `invalid_input` | The file failed the checks a single request makes, such as format, size, pages or frames | Fix the file using `error_detail` |
+| `refused` | Your plan or settings refused the file, such as a format your plan does not include | Check `error_detail` |
+| `insufficient_credits` | Credits ran out; this item and every later one are rejected | Add credits, then send the rejected files again |
+| `cancelled` | The batch was canceled before this file ran | Send it in a new batch if you still need it |
+| `admission_failed` | Etchv could not check the file after repeated attempts | Send it in a new batch |
+
+An upload created for a batch works only in that batch. Using its `upload_id` in another request returns `409` with `upload_in_batch`.
 
 ## Credits and retries
 
