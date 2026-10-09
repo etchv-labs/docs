@@ -1,0 +1,114 @@
+Send large files to Etchv in two steps: upload the file once to a signed URL,
+then pass its `upload_id` to any watermarking or detection endpoint instead of
+the file. Use this for files over 40 MB, and to check delivered files larger
+than a single request can carry. The SDKs do it for you.
+
+<Facts>
+  <Fact label="Upload host">uploads.etchv.com</Fact>
+  <Fact label="Upload URL">Valid 6 hours</Fact>
+  <Fact label="Upload">Used once · kept 24 hours</Fact>
+</Facts>
+
+## Create an upload
+
+Declare what the file is for and its exact size in bytes. Use a key with
+`watermarks:embed` for `image`, `document` or `video`, and `watermarks:detect`
+for `detect`.
+
+```bash
+curl https://api.etchv.com/uploads \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"kind":"image","filename":"campaign.png","size":46137344}'
+```
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `image`, `document` or `video` to watermark; `detect` to check a delivered file |
+| `filename` | Used for the watermarked file's name |
+| `size` | The file's exact length in bytes |
+
+The `201` response has an `upload_id`, a `status` of `pending` and an `upload`
+object with the `PUT` URL and when it expires.
+
+## Upload the file
+
+Send the bytes to `upload.url` with `PUT`. The URL is signed: do not add your
+API key, and do not change the URL.
+
+```bash
+curl -X PUT "$UPLOAD_URL" --upload-file campaign.png
+```
+
+A `200` means the file arrived. A file larger than its kind allows is refused
+with `413` before it is stored. Browsers can upload from etchv.com only.
+
+## Use the upload
+
+Send `upload_id` in place of `file`, with the same fields and options as a
+normal request. Every embed and detect endpoint accepts it, sync or
+[async](/docs/api/async).
+
+```bash
+curl https://api.etchv.com/watermarks/images/async \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: campaign-acme-2026-10' \
+  -F upload_id=upl_… \
+  -F 'data={"recipient":"acme"}'
+```
+
+The result is the same as uploading the file directly: the same watermark,
+credits and idempotency. An upload is used by exactly one request. A retry with
+the same `Idempotency-Key` and the same fields returns that request's job;
+anything else is refused with `409 upload_consumed`.
+
+## Upload status
+
+`GET /uploads/{upload_id}` reports where an upload stands.
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | Waiting for the file, or not checked since it arrived |
+| `received` | The file arrived with the declared size |
+| `consumed` | Used by the request in `request_id` |
+| `rejected` | The file could not be used; `error` says why. Create a new upload |
+| `expired` | Not used within 24 hours |
+
+## Limits
+
+| Kind | Largest file |
+| --- | --- |
+| `image` | 50 MB |
+| `document` | 20 MB |
+| `video` | 20 MB |
+| `detect` | 192 MB images, 64 MB PDFs, 100 MB video |
+
+Image and PDF detection that answers in the same request takes files up to
+95 MB. For larger delivered files, use `/watermarks/images/detect/async` or
+`/watermarks/documents/detect/async`; the sync endpoint answers `413` and keeps
+the upload for that request. Video detection always runs as a job and takes the
+full 100 MB.
+
+## Errors
+
+| Status | Code | What to do |
+| --- | --- | --- |
+| `409` | `upload_not_received` | Finish the `PUT`, then retry the request |
+| `409` | `upload_in_use` | Another request is using it; wait for that one |
+| `409` | `upload_consumed` | Create a new upload, or retry with the original `Idempotency-Key` |
+| `409` | `upload_rejected` | The file could not be used; fix it and create a new upload |
+| `410` | | The upload expired; create a new one |
+| `422` | | The upload was created for another kind of request; it is rejected |
+| `503` | | Too many large files at once; retry after `Retry-After` seconds |
+
+A file the API cannot use, such as an unsupported format, rejects the upload
+with the same error a direct upload would get. Refusals you can retry, such as
+your plan's concurrency limit or credits, leave the upload ready to use again.
+
+## SDKs
+
+Every SDK sends files over 40 MB through an upload automatically, retries with
+the same upload and waits for large detection jobs. Each also has an explicit
+upload method. See [Node.js](/docs/sdks/node), [Python](/docs/sdks/python),
+[Go](/docs/sdks/go), [Rust](/docs/sdks/rust), [C#](/docs/sdks/csharp) and
+[Java](/docs/sdks/java).

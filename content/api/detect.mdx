@@ -1,7 +1,7 @@
 <Endpoint method="POST" path="/watermarks/images/detect" />
 
 <Facts>
-  <Fact label="Upload">95 MB · 40 MP</Fact>
+  <Fact label="Upload">95 MB · 192 MB via upload</Fact>
   <Fact label="Output">Detection JSON</Fact>
   <Fact label="CPU cost">1 credit / file</Fact>
 </Facts>
@@ -56,6 +56,7 @@ Test the edits your workflow produces.
 | Background job | Append `/async`; returns a `202` receipt. [Collect the result](/docs/api/async) |
 | Completion event | Add `webhook_id` to an async request. [Webhooks](/docs/api/webhooks) |
 | GPU | Add `accelerator=gpu`; Business/Enterprise, 3× credits when GPU runs. [GPU guide](/docs/api/gpu) |
+| Files over 95 MB | Send a [large-file upload](/docs/api/uploads) to the `/async` endpoint |
 
 Storage options are for embedding only. Large animations take longer because
 every frame is checked. A successful image detection still costs one CPU credit

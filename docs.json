@@ -74,6 +74,12 @@
           "description": "Watermark files synchronously or asynchronously with the Etchv API. Wait for a result or submit a background job, then poll, use webhooks or retry safely."
         },
         {
+          "slug": "api/uploads",
+          "file": "api/uploads.mdx",
+          "title": "Large files",
+          "description": "Upload large files to Etchv once with a signed URL, then watermark them or detect watermarks in delivered files up to 192 MB by upload ID."
+        },
+        {
           "slug": "api/webhooks",
           "file": "api/webhooks.mdx",
           "title": "Webhooks",

@@ -10,7 +10,8 @@ and cost the same credits. The only difference is how your app gets the result.
 
 Sync detection of images and PDFs always returns JSON directly. It never turns
 into a pending job. Upload, checking and download time add to processing time.
-An async request still waits until the upload is checked and stored.
+An async request still waits until the upload is checked and stored. For files
+over 40 MB, upload once and send the ID instead: see [Large files](/docs/api/uploads).
 
 <Details title="All six endpoint pairs">
 
