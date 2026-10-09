@@ -19,4 +19,19 @@ Give file-result modules a filename with the original extension. **Download Asse
 
 To retry, send the same inputs with the same idempotency key. Collect job results within 24 hours. If you chose a bucket, check [storage delivery](/docs/api/webhooks#customer-storage-delivery-events) separately. A successful watermark does not mean the file reached your bucket.
 
+## Many files at once
+
+**Create Batch** watermarks up to 100 files in one call. Put the files in one zip of up to 55 MB (Make's Archive module can create it), map it, and list every file in **Items** with its exact path in the zip and its own reference data:
+
+```json
+[{"filename": "contracts/acme.pdf", "data": {"recipient": "acme"}},
+ {"filename": "contracts/globex.pdf", "data": {"recipient": "globex"}}]
+```
+
+The batch starts at once. Check it with **Get Batch** about once a minute until `status` is `completed`, `failed` or `cancelled`, then collect each file with **Get Watermarked File** and the item's `result_url`.
+
+With **Zip the results** on, **Download Batch Zip** gets every result as one zip once `archive_status` is `ready`, with a `manifest.json` listing the files and any failures. Each file costs the same credits as a single request, and files that fail are refunded; `error_code` on each item says why. Reuse the same idempotency key on retry to get the same batch back.
+
+Make modules send each request as one body, so Create Batch takes the files as a zip rather than uploading them one by one.
+
 See [shared workflow requirements](/docs/integrations#before-you-connect) and [async jobs](/docs/api/async).

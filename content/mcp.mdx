@@ -48,6 +48,7 @@ Keep your key out of conversations. Other clients can use the same command, argu
 - “Watermark this PDF for delivery-42, keeping its text selectable.”
 - “Check this video for an Etchv watermark.”
 - “List my latest watermarked assets and download the one I choose.”
+- “Watermark every PDF in contracts/ with the file name as the recipient and save the results to delivered/.”
 
 ## Your first watermark
 
@@ -58,6 +59,16 @@ Put `photo.jpg` in the media folder, then ask:
 The assistant calls `watermark_media` with a non-empty `data` object and an `idempotency_key` that stays the same on retries. It collects the result with `get_job` and `get_job_result`, using `operation: "embed"` and an `output_path`. Detection uses `detect_media` and `operation: "detect"`.
 
 Detection returns the watermark ID, a digest (fixed-length fingerprint) of your data. It does not return the original JSON. Keep your source record in your own system.
+
+## Many files at once
+
+`watermark_batch` watermarks up to 100 files in one batch, each with its own data. Name the files with `input_paths`, with `input_dir` and an optional `glob` such as `"*.pdf"` (no braces or `..`), or with `items` that carry their own `data`. A `data_template` fills in the rest: string values may use `{filename}`, `{stem}` (the name without its extension) and `{index}` (the file's 0-based position).
+
+The server uploads each file once and starts the batch. With `wait: true` it checks progress at the pace the API asks for, for up to `wait_seconds` (10 minutes by default), and with `output_dir` it saves the results. Clients that ask for progress see each upload and check; keep `wait_seconds` below your client's tool timeout.
+
+Otherwise the assistant follows the batch with `get_batch` and collects it with `download_batch`. It saves each successful file under the name it has in the batch zip, such as `001-contract-acme-watermarked.pdf`, or the zip itself when the batch was created with `archive: true`. Failed items are listed with their error codes.
+
+Each file costs the same credits as a single request, and files that fail are refunded. Calling `watermark_batch` again with the same arguments resumes or returns the same batch instead of a new one. If that batch expired before it started, or finished and its results expired after 24 hours, the tool says so; pass a new `idempotency_key` to run the files again. More than 100 files are refused before anything is sent; split them into several batches.
 
 ## Sync or async
 
@@ -88,6 +99,7 @@ API limits and plan access still apply. Downloads can be up to 512 MiB and 10 mi
 | `watermark_media` | `watermarks:embed` |
 | `detect_media` | `watermarks:detect` |
 | `get_job`, `get_job_result` | Matching embed or detect scope |
+| `watermark_batch`, `get_batch`, `download_batch` | `watermarks:embed` |
 | `list_assets`, `get_asset`, `download_asset` | `assets:read` |
 | `update_asset` | `assets:write` |
 | `delete_asset` | `assets:delete` + owner/admin |

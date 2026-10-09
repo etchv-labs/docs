@@ -22,6 +22,14 @@ Save `request_id`, `asset_id` and the reference record. On failure, send `error_
 
 For detection, select **Submit Detection**. Choose operation **Detection** when you collect the result. Compare `watermark_id` with the watermark IDs in your records. `watermarked: false` is a finished result: no watermark was found.
 
+## Many files at once
+
+**Submit Batch** watermarks up to 100 files in one step. Map line items into **Files**, **Filenames** (with their extensions) and **Reference data**: one JSON object per file in the same order, or a single object for every file. The step returns `batch_id`.
+
+Use the **Get Batch Status** search until `status` is `completed`, `failed` or `cancelled`, then collect each file with **Get Job Result** and the item's `result_url`. Each file costs the same credits as a single request, and files that fail are refunded; `error_code` on each item says why.
+
+The step downloads every file into memory before uploading it, within Zapier's memory and time limits for one step. Send large files in smaller batches.
+
 ## File and retry details
 
 - Map a Zapier **File** field with an HTTPS URL. The connector downloads the file without sending your Etchv key to the site that hosts it.

@@ -18,4 +18,12 @@ Save `status_url` and `result_url`. Check the existing job instead of sending a 
 
 **Download Asset** takes an `asset_id` and needs `assets:read`. Job results last 24 hours. Kept assets follow the [asset download window](/docs/api/assets#files-and-records).
 
+## Many files at once
+
+**Submit Batch** sends every item that reaches the node, up to 100, as one batch instead of one job per item. Each item needs a binary file whose name keeps its extension. Reference data is evaluated per item, so an expression such as `{"recipient": "{{ $json.email }}"}` gives each file its own data; the idempotency key, zip option and accelerator come from the first item. The node outputs one item with the batch, paired with every input.
+
+Check it with **Get Batch Status** about once a minute until `status` is `completed`, `failed` or `cancelled`, then collect each file with **Get Job Result** and the item's `result_url`. Each file costs the same credits as a single request, and files that fail are refunded; `error_code` on each item says why. For more than 100 items, split them first with **Loop Over Items**.
+
+The node holds every file of a batch in memory while it uploads them. On a small n8n instance, send large files in smaller batches.
+
 See [shared workflow requirements](/docs/integrations#before-you-connect) for file limits, reference data and safe retries.
