@@ -76,6 +76,8 @@ After a timeout, reuse the same [idempotency key](/docs/api/async#retry-safely) 
 | `documents` | [PDF](/docs/api/documents#supported-files); 20 MiB upload |
 | `videos` | [H.264 MP4/MOV](/docs/api/videos#supported-files); 20 MiB upload |
 
+Detection takes delivered files up to 192 MiB for images, 64 MiB for PDFs and 100 MiB for video. Files over 40 MiB are sent as a [large-file upload](/docs/api/uploads) automatically; set `ETCHV_LARGE_FILE_THRESHOLD` (bytes) to change that. Image and PDF detection above 95 MiB returns a job receipt for `get_job_result`.
+
 API limits and plan access still apply. Downloads can be up to 512 MiB and 10 minutes. The API must start responding within 45 seconds. Embedding and detection use [normal API credits](/docs/billing#what-uses-credits).
 
 ## Tools and permissions
