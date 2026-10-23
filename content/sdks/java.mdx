@@ -8,14 +8,14 @@ Maven:
 <dependency>
   <groupId>com.etchv</groupId>
   <artifactId>etchv-sdk</artifactId>
-  <version>1.2.0</version>
+  <version>1.3.0</version>
 </dependency>
 ```
 
 Gradle (Kotlin DSL):
 
 ```kotlin
-implementation("com.etchv:etchv-sdk:1.2.0")
+implementation("com.etchv:etchv-sdk:1.3.0")
 ```
 
 ## Embed a file
@@ -63,7 +63,7 @@ Detection returns the watermark it found, a confidence score, and results for ea
 
 ## Retries and recovery
 
-Embedding and video detection retry and check job status for you. Image and PDF detection do not. Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
+Embedding and video detection retry and check job status for you. Image and document detection do not. Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
 
 | Situation | Action |
 | --- | --- |

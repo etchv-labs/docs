@@ -1,7 +1,7 @@
 <Endpoint method="POST" path="/watermarks/videos" />
 
 <Facts>
-  <Fact label="Upload">20 MB · H.264</Fact>
+  <Fact label="Upload">20 MB · H.264, HEVC, VP9, ProRes, MPEG, AVI</Fact>
   <Fact label="Marking">Every frame</Fact>
   <Fact label="CPU cost">1 credit / 24 frames*</Fact>
 </Facts>
@@ -10,7 +10,8 @@
 
 ## Request
 
-Send a supported MP4 or MOV file and a JSON reference object that is not empty. Your
+Send a supported MP4, MOV, WebM, Matroska, MPEG or AVI file and a JSON reference
+object that is not empty. Your
 API key needs the `watermarks:embed` permission.
 
 ```sh
@@ -46,29 +47,40 @@ All limits apply at once. For example, the 240-frame cap allows 10 seconds at 24
 
 | Requirement | Limit |
 | --- | --- |
-| Container / codec | MP4 or MOV; one progressive 8-bit H.264 track, YUV 4:2:0 |
+| Container / codec | One progressive track: YUV 4:2:0 8-bit H.264 in MP4 or MOV; YUV 4:2:0 8- or 10-bit HEVC (Main, Main 10) in MP4, MOV or Matroska; YUV 4:2:0 8- or 10-bit VP9 (Profile 0, Profile 2) in WebM, MP4 or Matroska; ProRes 422 (Proxy, LT, Standard, HQ) or 4444 (4444, XQ, with or without alpha) in MOV; YUV 4:2:0 MPEG-1 video in an MPEG program stream (.mpg); YUV 4:2:0 MPEG-2 Main or Simple video in a program stream (.mpg) or transport stream (.ts); YUV 4:2:0 MPEG-4 Part 2 Simple or Advanced Simple video in MP4; or YUV 4:2:0 8-bit H.264, MPEG-4 Part 2 (including XviD and DivX) or MPEG-1/2 video in AVI |
 | Timing | Constant 1–60 fps, starts at zero; no rotation |
 | Duration / frames | 120 seconds / 240 frames |
 | Dimensions | Even dimensions, square pixels; 1 MP per frame, 40 MP total |
 | Upload / output / detection | 20 MB / 100 MB / 95 MB in one request, 100 MB through a [large-file upload](/docs/api/uploads) |
-| Audio | None, or one synchronized mono/stereo AAC-LC track |
+| Audio | None, or one synchronized mono/stereo track: AAC-LC in MP4; AAC-LC or 16/24-bit PCM in MOV; Opus or Vorbis in WebM; AAC-LC, Opus or Vorbis in Matroska; MP2, MP3 or AC-3 in a program stream; MP2, AAC-LC or AC-3 in a transport stream; PCM, MP2, MP3 or AC-3 in AVI |
 
-HDR, variable frame rates, fragmented MP4, other codecs, extra tracks, subtitles
-and attachments are not supported. Video must use a constant frame rate.
+HDR, interlaced video, variable frame rates, fragmented MP4, VP9 with alpha, other
+codecs, extra tracks, subtitles and attachments are not supported. Video must use a constant frame rate.
 
 <Callout title="Check playback compatibility">
-  The output uses lossless H.264 with the High 4:4:4 Predictive coding profile
-  and YUV 4:2:0 pixels. Use a player that supports this profile. Support in browsers
-  and hardware players varies. Lossless output can be larger than the source.
+  The output keeps your container, codec and, in AVI, FourCC. H.264, HEVC and VP9
+  are lossless at the source's bit depth with YUV 4:2:0 pixels; H.264 uses the High
+  4:4:4 Predictive profile. ProRes keeps its profile, chroma format and alpha, and
+  MPEG video its codec, with every frame coded independently. Use a player that
+  supports that codec and profile; browser and hardware support varies. Lossless
+  output can be larger than the source.
 </Callout>
 
 <Details title="What verification checks">
 
 Etchv must detect the exact watermark in every frame of the final encoded video.
 Each frame must also meet 35 dB PSNR, a measure of how close it looks to the
-original, after allowing for color conversion. Audio packets and timing are copied
-and checked. Metadata in the MP4/MOV wrapper is copied where supported, but not
-byte-for-byte. Editing, transcoding or recompression can affect recovery.
+original, after allowing for color conversion and, for ProRes and MPEG, their own
+encoding.
+
+In 10-bit video the watermark is in the upper 8 bits of each sample and the source's
+finer bits are kept. ProRes 4444 and XQ are delivered with 10-bit color and alpha, so
+a 12-bit source keeps its upper 10 bits.
+
+Color tags, audio packets and timing are copied and checked. In MPEG program streams,
+audio stays within one frame of its original position relative to the video. Container
+metadata is copied where supported, but not byte-for-byte. Editing, transcoding or
+recompression can affect recovery.
 
 </Details>
 

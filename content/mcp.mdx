@@ -64,6 +64,8 @@ Detection returns the watermark ID, a digest (fixed-length fingerprint) of your 
 
 `watermark_batch` watermarks up to 100 files in one batch, each with its own data. Name the files with `input_paths`, with `input_dir` and an optional `glob` such as `"*.pdf"` (no braces or `..`), or with `items` that carry their own `data`. A `data_template` fills in the rest: string values may use `{filename}`, `{stem}` (the name without its extension) and `{index}` (the file's 0-based position).
 
+Batches take images, PDF, DOCX and PPTX documents, and videos.
+
 The server uploads each file once and starts the batch. With `wait: true` it checks progress at the pace the API asks for, for up to `wait_seconds` (10 minutes by default), and with `output_dir` it saves the results. Clients that ask for progress see each upload and check; keep `wait_seconds` below your client's tool timeout.
 
 Otherwise the assistant follows the batch with `get_batch` and collects it with `download_batch`. It saves each successful file under the name it has in the batch zip, such as `001-contract-acme-watermarked.pdf`, or the zip itself when the batch was created with `archive: true`. Failed items are listed with their error codes.
@@ -84,10 +86,10 @@ After a timeout, reuse the same [idempotency key](/docs/api/async#retry-safely) 
 | `media` | Formats and limits |
 | --- | --- |
 | `images` | [Supported images](/docs/api/embed#native-format-preservation), including animation, TIFF pages and layers; 50 MiB upload |
-| `documents` | [PDF](/docs/api/documents#supported-files); 20 MiB upload |
-| `videos` | [H.264 MP4/MOV](/docs/api/videos#supported-files); 20 MiB upload |
+| `documents` | [PDF, DOCX and PPTX](/docs/api/documents#supported-files); 20 MiB upload |
+| `videos` | [MP4, MOV, WebM, Matroska, MPEG and AVI](/docs/api/videos#supported-files) with a supported codec; 20 MiB upload |
 
-Detection takes delivered files up to 192 MiB for images, 64 MiB for PDFs and 100 MiB for video. Files over 40 MiB are sent as a [large-file upload](/docs/api/uploads) automatically; set `ETCHV_LARGE_FILE_THRESHOLD` (bytes) to change that. Image and PDF detection above 95 MiB returns a job receipt for `get_job_result`.
+Detection takes delivered files up to 192 MiB for images, 64 MiB for PDFs and 100 MiB for DOCX, PPTX and video. Files over 40 MiB are sent as a [large-file upload](/docs/api/uploads) automatically; set `ETCHV_LARGE_FILE_THRESHOLD` (bytes) to change that. Image and document detection above 95 MiB returns a job receipt for `get_job_result`.
 
 API limits and plan access still apply. Downloads can be up to 512 MiB and 10 minutes. The API must start responding within 45 seconds. Embedding and detection use [normal API credits](/docs/billing#what-uses-credits).
 

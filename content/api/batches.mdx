@@ -20,8 +20,8 @@ same credits as a single request.
 
 A loop of async requests soon reaches your plan's concurrency limit and
 returns `429`. Batch files never do: they wait their turn and run within the
-limit. You poll one URL instead of one per file. Batches watermark images, PDFs
-and video. Detection is not batched. Use a key with `watermarks:embed`.
+limit. You poll one URL instead of one per file. Batches watermark images, PDF,
+DOCX and PPTX documents, and video. Detection is not batched. Use a key with `watermarks:embed`.
 
 ## Create a batch
 
@@ -45,7 +45,7 @@ curl --fail-with-body https://api.etchv.com/watermarks/batches \
 
 | Field | Meaning |
 | --- | --- |
-| `items[].filename` | Up to 255 characters. Its extension sets the media type: an image, `pdf`, `mp4` or `mov` |
+| `items[].filename` | Up to 255 characters. Its extension sets the media type: an image (`jpg`, `jpeg`, `png`, `tif`, `tiff`, `psd`, `psb`, `gif`, `bmp`, `ppm`, `webp`), a document (`pdf`, `docx`, `pptx`) or a video (`mp4`, `mov`, `webm`, `mkv`, `mpg`, `mpeg`, `ts`, `avi`) |
 | `items[].size` | The file's exact length in bytes |
 | `items[].data` | A JSON object that is not empty, up to 8 KB, as for a [single request](/docs/api/embed) |
 | `archive` | `true` also zips every result into one download. Default `false` |
@@ -297,7 +297,7 @@ you cancel sends no event. [Payload and verification](/docs/api/webhooks#events)
 | Limit | Value |
 | --- | --- |
 | Files per batch | 100 |
-| File size | Images 50 MB · PDFs and video 20 MB |
+| File size | Images 50 MB · documents and video 20 MB |
 | `data` per file | 8 KB as JSON |
 | Upload URL | Valid 6 hours; repeat the create request for fresh URLs |
 | Draft | Must be started within 24 hours |

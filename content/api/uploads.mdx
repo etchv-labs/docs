@@ -81,9 +81,9 @@ anything else is refused with `409 upload_consumed`.
 | `image` | 50 MB |
 | `document` | 20 MB |
 | `video` | 20 MB |
-| `detect` | 192 MB images, 64 MB PDFs, 100 MB video |
+| `detect` | 192 MB images, 64 MB PDFs, 100 MB DOCX, PPTX and video |
 
-Image and PDF detection that answers in the same request takes files up to
+Image and document detection that answers in the same request takes files up to
 95 MB. For larger delivered files, use `/watermarks/images/detect/async` or
 `/watermarks/documents/detect/async`; the sync endpoint answers `413` and keeps
 the upload for that request. Video detection always runs as a job and takes the

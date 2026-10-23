@@ -86,6 +86,7 @@ Etchv reads the format from the file’s bytes, not its name. High-bit-depth and
 
 - JPEG: quality 100, 4:4:4 chroma. WebP: lossless. TIFF: lossless Deflate.
 - Palette and grayscale inputs may expand to RGB. GIF frames must be at most 1 MP.
+- 1-bit PNG, BMP, GIF and TIFF images expand to RGB. Line art and scanned text carry a watermark; a photo dithered to black-and-white dots usually cannot, and the request fails and its credit is refunded.
 - RGB ICC profiles, EXIF and resolution are preserved where supported; other metadata is not guaranteed.
 - RGBA transparency is preserved. Verification composites onto white; fully transparent frames cannot carry a watermark.
 - Encoding settings and file bytes may change. The final image must score at least 35 dB PSNR (a standard measure of how close it looks to the original), including loss from encoding.

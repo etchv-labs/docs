@@ -1,15 +1,16 @@
 <Endpoint method="POST" path="/watermarks/documents" />
 
 <Facts>
-  <Fact label="Upload">20 MB · 8 pages</Fact>
-  <Fact label="Output">Selectable PDF</Fact>
-  <Fact label="CPU cost">1 credit / page</Fact>
+  <Fact label="Upload">20 MB · PDF, DOCX, PPTX</Fact>
+  <Fact label="Output">Same format, editable</Fact>
+  <Fact label="CPU cost">1 credit / page or unit</Fact>
 </Facts>
 
 ## Request
 
-Send a PDF and a JSON reference object that is not empty. Your API key needs the
-`watermarks:embed` permission.
+Send a PDF, DOCX or PPTX and a JSON reference object that is not empty. Your API key
+needs the `watermarks:embed` permission. The result is the same format: a PDF stays a
+PDF, and Word and PowerPoint files stay editable.
 
 ```sh
 curl --fail-with-body https://api.etchv.com/watermarks/documents \
@@ -20,8 +21,8 @@ curl --fail-with-body https://api.etchv.com/watermarks/documents \
   -D response-headers.txt --output response-body
 ```
 
-A `200` response returns the watermarked PDF. A `202` response returns a job receipt
-instead, so check the status before you save the body as a PDF. Save the watermark ID
+A `200` response returns the watermarked file. A `202` response returns a job receipt
+instead, so check the status before you save the body as a document. Save the watermark ID
 from the `X-Watermark-ID` header with your record.
 [Response headers and request options](/docs/api/embed#request-options).
 
@@ -77,10 +78,43 @@ recovery.
 
 </Details>
 
+## DOCX and PPTX
+
+| Requirement | Limit |
+| --- | --- |
+| Files | DOCX and PPTX (Office Open XML); not macro-enabled, templates, slide shows or password-protected |
+| Upload / output / detection | 20 MB / 100 MB / 95 MB in one request, 100 MB through a [large-file upload](/docs/api/uploads) |
+| Watermark units | Up to 128 page or slide watermarks and images, 40 MP in total |
+| Slide backgrounds | Solid colors, pictures and linear gradients; pattern fills, tiled pictures and path gradients are not supported yet |
+
+The watermark is carried in units:
+
+- **Pages.** Every Word header that a page shows gets a page-sized picture behind the
+  text, made from the page's own color with the watermark. Sections without a
+  header get one that holds only this picture.
+- **Slides.** Every slide, including hidden slides, gets its background as a picture
+  with the watermark. Slides with the same background share one. A gradient background
+  becomes a picture of the gradient.
+- **Images.** Every JPEG, PNG, GIF, BMP or TIFF image of at least 64 pixels on each side
+  is watermarked in its own format. Smaller images, animations and vector graphics are
+  unchanged.
+
+Text, tables, fields, tracked changes, comments, notes, animations and layouts are
+unchanged. Etchv must detect the exact watermark in every unit of the final file, and
+each unit must meet 35 dB PSNR.
+
+<Callout title="Detection reads the file">
+  Detect a DOCX or PPTX by uploading the file. Its page and slide pictures and its
+  images recover the watermark exactly. A screenshot, print or PDF export of a page or
+  slide that is mostly text is usually not traceable, because the text covers most of
+  the picture behind it. Photos in the document keep their own watermark when copied.
+  Removing a header, a slide background or an image removes that unit's watermark.
+</Callout>
+
 ## Billing and results
 
-- **Embed:** one CPU credit per page, so an eight-page PDF costs 8. If the request fails, the reserved credits are refunded.
-- **Detect:** one CPU credit per PDF, whatever its page count. `units` reports each page. The top-level watermark ID is present only when Etchv finds the same watermark on every page.
+- **Embed:** one CPU credit per PDF page, so an eight-page PDF costs 8. A DOCX or PPTX costs one credit per watermark unit: each page or slide background picture and each image. If the request fails, the reserved credits are refunded.
+- **Detect:** one CPU credit per file, whatever its page count. `units` reports each PDF page, or each DOCX/PPTX unit with its `part` name. For a PDF, the top-level watermark ID is present only when Etchv finds the same watermark on every page; for a DOCX or PPTX, on every unit that carries one, so images added later do not hide it.
 - **Retrieve:** [job results](/docs/api/async) last 24 hours. A retry with the same [idempotency key](/docs/api/async#retry-safely) returns the saved file without another charge.
 
 ## SDKs
@@ -90,9 +124,9 @@ recovery.
 | [Python](/docs/sdks/python) | `embed_document` / `detect_document` |
 | [Node.js](/docs/sdks/node) | `embedDocument` / `detectDocument` |
 
-In these SDKs, the `image` field contains the PDF bytes. Save the file using the
-returned filename and the `application/pdf` content type. The [other SDKs](/docs#choose-your-integration)
-also support PDFs. DOCX and PPTX are not yet supported.
+In these SDKs, the `image` field contains the document bytes. Save the file using the
+returned filename and content type. The [other SDKs](/docs#choose-your-integration)
+also support PDFs.
 
 ## <span id="choose-where-results-are-stored" />Asset library
 
