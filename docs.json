@@ -113,7 +113,7 @@
           "slug": "api/documents",
           "file": "api/documents.mdx",
           "title": "PDF watermarking",
-          "description": "PDF watermarking API reference: watermark PDF pages while keeping text selectable and vector content intact. Pages are not flattened. Up to 20 MB, 8 pages."
+          "description": "PDF watermarking API reference: watermark PDF pages while keeping text selectable and vector content intact. Pages are not flattened. Up to 50 MB and 2,000 pages."
         },
         {
           "slug": "api/videos",

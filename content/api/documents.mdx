@@ -1,7 +1,7 @@
 <Endpoint method="POST" path="/watermarks/documents" />
 
 <Facts>
-  <Fact label="Upload">20 MB · PDF, DOCX, PPTX</Fact>
+  <Fact label="Upload">PDF 50 MB · DOCX, PPTX 20 MB</Fact>
   <Fact label="Output">Same format, editable</Fact>
   <Fact label="CPU cost">1 credit / page or unit</Fact>
 </Facts>
@@ -31,36 +31,73 @@ from the `X-Watermark-ID` header with your record.
 | Operation | Endpoint |
 | --- | --- |
 | Embed | `POST /watermarks/documents` |
-| Detect | `POST /watermarks/documents/detect` with `file` and `watermarks:detect` |
+| Detect | `POST /watermarks/documents/detect` with `file` and `watermarks:detect`; a PDF over 32 pages may return `202` with a job receipt |
 | Background embed / detect | Append `/async` to either endpoint |
 
 Async requests support `webhook_id`. Both modes support `accelerator=gpu` on Business
-and Enterprise plans. Embedding also supports `storage_destination_id` and `storage_key`.
+and Enterprise plans. Embedding also supports `storage_destination_id` and `storage_key`,
+and for a PDF, `active_content` ([scripts and actions](#scripts-and-actions)).
 [Jobs](/docs/api/async) · [GPU](/docs/api/gpu) · [Storage](/docs/storage).
 
 ## <span id="first-supported-profile" />Supported files
 
 | Requirement | Limit |
 | --- | --- |
-| Document | Passive, unencrypted PDF; 1–8 unrotated pages with standard page units |
-| Upload / output / detection | 20 MB / 64 MB / 64 MB |
-| Rendered pixels at 144 dpi | 4 MP per page; 16.8 MP total, enough for eight A4 or US Letter pages |
-| Page content | Text, vectors, scanned images or a mixture |
-| Unsupported | Forms, digital signatures, active content and annotation types not listed below |
+| Document | Any PDF that opens without a password: 1 to 2,000 pages, any page size or rotation |
+| Upload / output / detection | 50 MB / 95 MB / 95 MB. The watermark adds up to about 48 KB per page, so a long PDF must leave that room under 95 MB: a 2,000-page PDF can be up to about 1 MB |
+| Page content | Text, vectors, scanned images, forms, annotations or a mixture |
+| Not supported | PDFs that need a password to open: remove the open password first |
 
-Text stays searchable and selectable. Fonts, vectors, page sizes, supported
-annotations and document metadata stay the same. The watermark is stored in added
-textures, which can make the file larger. Editing the layout or removing those
+Text stays searchable and selectable. Everything else stays as it was: fonts,
+vectors, page sizes, links, bookmarks, form fields and their values, annotations,
+attachments, scripts and metadata. The watermark is two small textures drawn over
+each page, which add about 25 KB per page (rarely up to 48 KB). Editing the layout or removing those
 textures can affect recovery.
 
-<Details title="Annotations, attachments and active content">
+<Details title="Forms, signatures, encryption and large pages">
 
-- **Retained:** links, text notes, popups and static `PlyBorder` annotations, including relationships and appearance streams. Borders need a normal Form appearance; actions on notes, popups and borders are unsupported.
-- **JSON attachments:** retained byte-for-byte, not watermarked. Require a `.json` name, `application/json` type and valid UTF-8 JSON object/array. Maximum 64 nesting levels, 64 KB each, 256 KB total and 16 files.
-- **Removed:** document/page open actions, additional actions and document-level JavaScript that run automatically.
-- **Rejected:** other active content (including scripts on links), non-JSON attachments, forms and digital signatures. Scanned handwritten signatures are ordinary page content.
+- **Forms:** fields and their values are unchanged and stay fillable. The watermark is in the page content underneath them.
+- **Digital signatures:** the watermark is added as an incremental update after the signed revision, so existing signatures stay valid for what was signed. PDF viewers show that the document changed after signing. A signed PDF that is also encrypted, or that has to be repaired before it opens, is written again instead, and its signatures no longer verify.
+- **Encryption:** a PDF with only an owner (permissions) password is watermarked and keeps its encryption and permissions; your owner password still works.
+- **Annotations:** notes, stamps, highlights and other annotations are retained and do not receive their own watermark.
+- **Very large pages:** a page above 4 megapixels at 144 dpi, such as a map or a poster, is watermarked and detected at a proportionally lower resolution.
+- **Very narrow pages:** a page under 128 points (about 1.8 inches) on its shorter side, such as a strip or a label, is watermarked and detected at a higher resolution, so its shorter side renders at 256 pixels.
 
-Annotations are retained separately and do not receive their own watermark.
+</Details>
+
+<span id="scripts-and-actions" />
+
+<Details title="Scripts and actions">
+
+By default (`active_content=keep`), scripts, actions, form fields and attachments come
+back exactly as you uploaded them. Etchv never runs them.
+
+With `active_content=remove_auto_run`, Etchv also removes what a PDF viewer runs by
+itself, without the reader acting:
+
+- the action run when the document opens (a page to open at is not an action and stays);
+- additional actions of the document and its pages, and document-level JavaScript;
+- annotation actions that run when a page opens, closes or comes into view;
+- XFA forms, whose scripts Acrobat runs on open (the regular form fields stay; a form
+  built only in XFA, with no regular fields, shows its placeholder page instead);
+- rich media and 3D content set to start on its own, which then starts on a click.
+
+Links, form fields with their keystroke, format, calculation and click scripts, and
+attachments stay, because they run only when the reader acts. Form calculations that
+rely on document-level JavaScript may stop working. In a digitally signed PDF the
+watermark is a later revision, so the signed revision underneath keeps what it had:
+a viewer that shows the signed version shows it as it was signed.
+
+```sh
+curl --fail-with-body "https://api.etchv.com/watermarks/documents?active_content=remove_auto_run" \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@contract.pdf' \
+  --form-string 'data={"recipient":"counsel-7"}' --output contract-watermarked.pdf
+```
+
+The option is part of the request: an `Idempotency-Key` reused with a different value
+returns `409`. `remove_auto_run` applies to PDFs only and returns `422` for a DOCX or
+PPTX; the image and video endpoints refuse the option. Batches use the default.
 
 </Details>
 
@@ -70,6 +107,10 @@ Etchv must detect the exact watermark on each final page. Each page must also me
 35 dB PSNR, a measure of how close the result looks to the original. Etchv checks this
 with two PDF rendering engines, using a standard 144 dpi RGB rendering with
 annotations hidden. Two blended textures carry the watermark; pages are not flattened.
+
+On the rare page that the two engines draw differently (a damaged page one of them
+cannot draw, for example), the watermark is checked in the engine detection uses, and
+the other engine still has to meet the quality limit.
 
 Embed fonts in your source PDFs so they render the same everywhere. Etchv does not
 add fonts to your PDF. Its verification render uses standard substitute fonts, and
@@ -114,7 +155,7 @@ each unit must meet 35 dB PSNR.
 ## Billing and results
 
 - **Embed:** one CPU credit per PDF page, so an eight-page PDF costs 8. A DOCX or PPTX costs one credit per watermark unit: each page or slide background picture and each image. If the request fails, the reserved credits are refunded.
-- **Detect:** one CPU credit per file, whatever its page count. `units` reports each PDF page, or each DOCX/PPTX unit with its `part` name. For a PDF, the top-level watermark ID is present only when Etchv finds the same watermark on every page; for a DOCX or PPTX, on every unit that carries one, so images added later do not hide it.
+- **Detect:** one CPU credit per file, whatever its page count. A PDF over 32 pages is detected as a job: the response is its result when it finishes in time, otherwise a `202` receipt. `units` reports each PDF page, or each DOCX/PPTX unit with its `part` name. For a PDF, the top-level watermark ID is present only when Etchv finds the same watermark on every page; for a DOCX or PPTX, on every unit that carries one, so images added later do not hide it.
 - **Retrieve:** [job results](/docs/api/async) last 24 hours. A retry with the same [idempotency key](/docs/api/async#retry-safely) returns the saved file without another charge.
 
 ## SDKs

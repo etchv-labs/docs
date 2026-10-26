@@ -79,9 +79,9 @@ anything else is refused with `409 upload_consumed`.
 | Kind | Largest file |
 | --- | --- |
 | `image` | 50 MB |
-| `document` | 20 MB |
+| `document` | 50 MB for PDF; DOCX and PPTX 20 MB |
 | `video` | 20 MB |
-| `detect` | 192 MB images, 64 MB PDFs, 100 MB DOCX, PPTX and video |
+| `detect` | 192 MB images, 95 MB PDFs, 100 MB DOCX, PPTX and video |
 
 Image and document detection that answers in the same request takes files up to
 95 MB. For larger delivered files, use `/watermarks/images/detect/async` or
