@@ -97,7 +97,8 @@ curl --fail-with-body "https://api.etchv.com/watermarks/documents?active_content
 
 The option is part of the request: an `Idempotency-Key` reused with a different value
 returns `409`. `remove_auto_run` applies to PDFs only and returns `422` for a DOCX or
-PPTX; the image and video endpoints refuse the option. Batches use the default.
+PPTX; the image and video endpoints refuse the option. [Batches](/docs/api/batches#create-a-batch)
+take it for every file, and `remove_auto_run` needs every file to be a PDF.
 
 </Details>
 

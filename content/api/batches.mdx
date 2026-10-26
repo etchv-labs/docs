@@ -52,6 +52,7 @@ curl --fail-with-body https://api.etchv.com/watermarks/batches \
 | `webhook_id` | Optional [webhook endpoint](/docs/api/webhooks) for the event sent when the batch ends |
 | `accelerator` | `cpu` or `gpu`, as for a single request. See [GPU processing](/docs/api/gpu) |
 | `storage_destination_id` | Deliver every result to [your bucket](/docs/storage). Cannot be combined with `archive` |
+| `active_content` | `keep` (default) or `remove_auto_run`, as for a [single PDF](/docs/api/documents#scripts-and-actions). `remove_auto_run` needs every file to be a PDF, otherwise `422`. A file named `.pdf` that is not a PDF is rejected on its own when the batch starts, with `error_code` `invalid_input` |
 
 The whole request is checked before anything is created. One unsupported file
 type, missing `data` or file over its size limit returns `422` or `413`, and no
@@ -73,6 +74,7 @@ key is refused with `409`. Always use a new key for each new batch.
   "accelerator": "cpu",
   "webhook_id": null,
   "storage_destination_id": null,
+  "active_content": "keep",
   "counts": {"pending": 2, "accepted": 0, "rejected": 0, "succeeded": 0, "failed": 0, "in_progress": 0},
   "credits": {"reserved": 0, "charged": 0, "refunded": 0},
   "cancel_requested": false,
