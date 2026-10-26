@@ -158,6 +158,11 @@ except WebhookVerificationError:
 On Business or Enterprise plans, pass `accelerator="gpu"`. GPU processing uses 3× credits. If the job falls back to CPU, it uses normal credits. `result.accelerator` reports the accelerator used. See
 [GPU processing](/docs/api/gpu).
 
+## PDF scripts and actions
+
+A watermarked PDF keeps its scripts and actions by default. Pass `active_content="remove_auto_run"` to `embed_document`, `submit_embed("documents", ...)`, `submit_batch` or `submit_batch_zip` to remove what a PDF viewer runs by itself. It is for PDFs only: the API refuses it for a DOCX or PPTX, and for a batch unless every file is a PDF. See
+[scripts and actions](/docs/api/documents#scripts-and-actions).
+
 ## Choose where results are stored
 
 [Connect your bucket](/docs/storage), then pass its destination ID. You can also pass an object key, which is the file’s path in your bucket. Leave both out to use Etchv storage.

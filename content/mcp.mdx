@@ -86,10 +86,10 @@ After a timeout, reuse the same [idempotency key](/docs/api/async#retry-safely) 
 | `media` | Formats and limits |
 | --- | --- |
 | `images` | [Supported images](/docs/api/embed#native-format-preservation), including animation, TIFF pages and layers; 50 MiB upload |
-| `documents` | [PDF, DOCX and PPTX](/docs/api/documents#supported-files); 20 MiB upload |
+| `documents` | [PDF, DOCX and PPTX](/docs/api/documents#supported-files); PDF up to 50 MiB and 2,000 pages (a 2,000-page PDF up to about 1 MiB); DOCX and PPTX 20 MiB |
 | `videos` | [MP4, MOV, WebM, Matroska, MPEG and AVI](/docs/api/videos#supported-files) with a supported codec; 20 MiB upload |
 
-Detection takes delivered files up to 192 MiB for images, 64 MiB for PDFs and 100 MiB for DOCX, PPTX and video. Files over 40 MiB are sent as a [large-file upload](/docs/api/uploads) automatically; set `ETCHV_LARGE_FILE_THRESHOLD` (bytes) to change that. Image and document detection above 95 MiB returns a job receipt for `get_job_result`.
+Detection takes delivered files up to 192 MiB for images, 95 MiB for PDFs and 100 MiB for DOCX, PPTX and video. Files over 40 MiB are sent as a [large-file upload](/docs/api/uploads) automatically; set `ETCHV_LARGE_FILE_THRESHOLD` (bytes) to change that. Image and document detection above 95 MiB returns a job receipt for `get_job_result`.
 
 API limits and plan access still apply. Downloads can be up to 512 MiB and 10 minutes. The API must start responding within 45 seconds. Embedding and detection use [normal API credits](/docs/billing#what-uses-credits).
 
@@ -121,6 +121,7 @@ Turn on only the scopes you need. Your MCP client decides when to ask you to app
 | Move an existing result | Use `store_asset`. Once delivery succeeds, Etchv removes its temporary copy and downloads read from your bucket |
 | [Webhooks](/docs/api/webhooks) | Configure in the dashboard; pass `webhook_id` on async submissions |
 | [GPU](/docs/api/gpu) | Set `accelerator: "gpu"` on Business or Enterprise |
+| [PDF scripts and actions](/docs/api/documents#scripts-and-actions) | Set `active_content: "remove_auto_run"` on `watermark_media` or `watermark_batch` (PDFs only) |
 
 Storage credentials and signing secrets stay out of tool arguments and responses.
 

@@ -8,14 +8,14 @@ Maven:
 <dependency>
   <groupId>com.etchv</groupId>
   <artifactId>etchv-sdk</artifactId>
-  <version>1.3.0</version>
+  <version>1.4.0</version>
 </dependency>
 ```
 
 Gradle (Kotlin DSL):
 
 ```kotlin
-implementation("com.etchv:etchv-sdk:1.3.0")
+implementation("com.etchv:etchv-sdk:1.4.0")
 ```
 
 ## Embed a file
@@ -155,6 +155,10 @@ if (!valid) throw new SecurityException("Invalid webhook signature");
 
 On Business or Enterprise plans, pass `options.withAccelerator(EtchvClient.Accelerator.GPU)`. GPU processing uses 3× the credits. If processing falls back to CPU, it uses normal credits. `result.accelerator()` shows which one was used. See
 [GPU processing](/docs/api/gpu).
+
+## PDF scripts and actions
+
+A watermarked PDF keeps its scripts and actions by default. To remove what a PDF viewer runs by itself, pass `options.withActiveContent(EtchvClient.ActiveContent.REMOVE_AUTO_RUN)` to `embedDocument` or `submitEmbed("documents", …)`, or `BatchOptions.withActiveContent` for a batch of PDFs. The API refuses it for a DOCX or PPTX, and for a batch unless every file is a PDF. See [scripts and actions](/docs/api/documents#scripts-and-actions).
 
 ## Choose where results are stored
 

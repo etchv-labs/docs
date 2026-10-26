@@ -4,7 +4,7 @@ Needs .NET 10. Create one `EtchvClient` and reuse it; it is safe to use from man
 
 ```sh
 # From your project folder: clone next to it, not inside it
-git clone --branch v1.3.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
+git clone --branch v1.4.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
 dotnet add reference ../etchv-csharp-sdk/src/Etchv/Etchv.csproj
 ```
 
@@ -152,6 +152,11 @@ if (!WebhookSignature.Verify(buffer.ToArray(), request.Headers["X-Etchv-Timestam
 
 On Business or Enterprise plans, pass `new RequestOptions(Accelerator: Accelerator.Gpu)`. GPU processing uses 3× the credits. If processing falls back to CPU, it uses normal credits. `result.Accelerator` shows which one was used. See
 [GPU processing](/docs/api/gpu).
+
+## PDF scripts and actions
+
+A watermarked PDF keeps its scripts and actions by default. To also remove what a PDF viewer runs by itself, pass `new RequestOptions { ActiveContent = ActiveContent.RemoveAutoRun }` to `EmbedDocumentAsync` or `SubmitEmbedAsync("documents", ...)`, or set it on `BatchOptions` for a batch of PDFs. See
+[scripts and actions](/docs/api/documents#scripts-and-actions).
 
 ## Choose where results are stored
 

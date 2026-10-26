@@ -3,7 +3,7 @@ Needs Go 1.25 or later. Import the package as `etchv`. Create one client and reu
 ## Install
 
 ```sh
-go get github.com/etchv-labs/go-sdk@v1.3.0
+go get github.com/etchv-labs/go-sdk@v1.4.0
 ```
 
 ## Embed a file
@@ -158,6 +158,10 @@ if err != nil { http.Error(w, "invalid signature", 400); return }
 
 On Business or Enterprise plans, pass `etchv.Options{Accelerator: etchv.AcceleratorGPU}`. GPU processing uses 3× the credits. If processing falls back to CPU, it uses normal credits. `result.Accelerator` shows which one was used. See
 [GPU processing](/docs/api/gpu).
+
+## PDF scripts and actions
+
+A watermarked PDF keeps its scripts and actions by default. Pass `etchv.Options{ActiveContent: etchv.ActiveContentRemoveAutoRun}` to `EmbedDocument` or `SubmitEmbed`, or set `BatchOptions.ActiveContent`, to remove what a PDF viewer runs by itself. It is for PDFs only: the API refuses it for a DOCX or PPTX, and for a batch unless every file is a PDF. See [scripts and actions](/docs/api/documents#scripts-and-actions).
 
 ## Choose where results are stored
 
