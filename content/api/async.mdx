@@ -127,7 +127,7 @@ not add a charge or send another webhook event. To get an event again, ask for a
 <Details title="Processing guarantees and retention">
 
 - Up to five processing attempts, with a growing wait between them. Each attempt uses the original input and the same watermark.
-- If a worker crashes, another picks up the job once the first worker’s claim expires. Image jobs have a 30-minute deadline. PDF jobs add 6 seconds per page, up to 4 hours, and video jobs 15 seconds per frame, up to 90 minutes. Jobs past their deadline are closed and refunded when workers recover.
+- If a worker crashes, another picks up the job once the first worker’s claim expires. Image jobs have a 30-minute deadline. PDF jobs add 6 seconds per page (12 per scanned page), up to 430 minutes, and video jobs 15 seconds per frame, up to 90 minutes. Jobs past their deadline are closed and refunded when workers recover.
 - The checked output, asset records and credit charge are saved together, or not at all. A failure refunds the credits held for the job.
 - Job results last **24 hours**. After that, a download returns `410`. The idempotency key stays on record.
 - Etchv keeps library files for up to **1 year** while your subscription is active (30 days on the trial). If you choose your own bucket, your bucket controls how long output is kept. Records stay until deleted. Detection adds nothing to the library.
