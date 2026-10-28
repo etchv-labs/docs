@@ -1,0 +1,91 @@
+Send a confidential file to several people so that each one downloads their own
+watermarked copy. If a copy leaks, detection tells you whose it was.
+
+## What you need
+
+- The file in your [asset library](/dashboard/assets). Any file you have
+  watermarked is there: its original is the source you share.
+- Credits for one embed of the file per recipient. See [billing](/docs/billing).
+- For the API, a key with `watermarks:embed`, `links:write` and `links:read`,
+  and `watermarks:detect` to check a file later.
+
+## Share from the dashboard
+
+Open the original in [Assets](/dashboard/assets) and choose
+**Share traceable copies**. Name the link, paste your recipients' email
+addresses, one per line, and check the cost shown before you choose
+**Create link**.
+
+Copy the link from its page and send it to your recipients in your own email,
+chat or document system. The link's page in [Links](/dashboard/links) shows who
+has opened it and downloaded their copy.
+
+## Share with the API
+
+Watermark the file once to put its original in your library, and keep the
+`X-Source-Asset-ID` response header:
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/documents \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F 'file=@board-pack.pdf' \
+  --form-string 'data={"document":"board-pack-2026-10"}' \
+  -D response-headers.txt --output response-body
+SOURCE_ASSET_ID=$(awk 'tolower($1)=="x-source-asset-id:" {print $2}' response-headers.txt | tr -d '\r')
+```
+
+`response-body` is the watermarked PDF. A long PDF may be processed in the
+background and answer `202` with a job receipt instead; its
+[job status](/docs/api/async) then has `source_asset_id`. For a file already in
+your library, [list assets](/docs/api/assets#list-assets) with `kind=source`.
+
+Then create the link and send its `url`:
+
+```sh
+curl --fail-with-body https://api.etchv.com/links \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: board-pack-2026-10' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "asset_id": "'"$SOURCE_ASSET_ID"'",
+    "name": "Board pack, October",
+    "recipients": ["alex@example.com", "sam@example.com"],
+    "download_limit": 3
+  }' | jq -r .url
+```
+
+To let anyone at a company open the link, give `allowed_domains` instead of
+`recipients`. See the [links reference](/docs/api/links#create-a-link) for
+every field, and [When copies are made](/docs/api/links#when-copies-are-made)
+for long files.
+
+## What recipients see
+
+The link opens a page on etchv.com with the link's name and your workspace's
+name. The recipient enters their email address and the code Etchv sends to it,
+then downloads their copy. They don't need an Etchv account. The page reads the
+same for every address, so it never reveals who else the link was shared with.
+
+## Follow opens and stop sharing
+
+[Read the link](/docs/api/links#read-a-link) to see each recipient's first
+open and downloads, or give `webhook_id` to receive a
+[`link.opened` event](/docs/api/links#webhook-events) as each one happens.
+
+[Revoke](/docs/api/links#revoke-a-link) the link when you no longer want
+anyone to open it. Links also expire: by default 30 days after creation, or
+sooner if the source file expires first.
+
+## Trace a leaked copy
+
+When a copy turns up somewhere it shouldn't, check it on
+[Check a file](/dashboard/detect) or with the API:
+
+```sh
+curl --fail-with-body https://api.etchv.com/watermarks/documents/detect \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -F file=@found.pdf
+```
+
+The response's `copy` names the link, the recipient it was made for and when
+they first opened it. See [detection](/docs/api/detect).

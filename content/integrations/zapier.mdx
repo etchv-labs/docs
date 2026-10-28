@@ -26,14 +26,22 @@ For detection, select **Submit Detection**. Choose operation **Detection** when 
 
 **Submit Batch** watermarks up to 100 files in one step. Map line items into **Files**, **Filenames** (with their extensions) and **Reference data**: one JSON object per file in the same order, or a single object for every file. The step returns `batch_id`.
 
-Use the **Get Batch Status** search until `status` is `completed`, `failed` or `cancelled`, then collect each file with **Get Job Result** and the item's `result_url`. Each file costs the same credits as a single request, and files that fail are refunded; `error_code` on each item says why.
+Use the **Get Batch Status** action until `status` is `completed`, `failed` or `cancelled`, then collect each file with **Get Job Result** and the item's `result_url`. Each file costs the same credits as a single request, and files that fail are refunded; `error_code` on each item says why.
 
 The step downloads every file into memory before uploading it, within Zapier's memory and time limits for one step. Send large files in smaller batches.
+
+## Traceable links
+
+**Create Traceable Link** shares a file from your [asset library](/docs/api/assets) so each recipient opens their own watermarked copy. Map the original's `asset_id` (a source asset, such as `source_asset_id` from a watermark job), a name, and either recipients' email addresses or allowed domains, with an idempotency key. Recipients and allowed domains are lists: add one value per box, or map line items.
+
+The step returns the link with its `url`; send it to your recipients in your own email or chat step, because Etchv does not send it. Each copy costs one embed of the file, charged when it is made. The key needs `links:write`. See [traceable links](/docs/api/links).
 
 ## File and retry details
 
 - Map a Zapier **File** field with an HTTPS URL. The connector downloads the file without sending your Etchv key to the site that hosts it.
+- An idempotency key is 8 to 128 letters, digits, hyphens or underscores. A timestamp such as `2026-10-28T13:58:46Z` is refused because of its colons: map the source event's ID, or build the key from parts such as a schedule's year and month (`report-2026-10`).
 - To retry, send the same inputs with the same idempotency key. Results that are still pending are never passed on as files.
+- **Download Asset**, **Create Traceable Link** and **Submit Watermark** can list your assets and enabled storage destinations to pick from. The lists need `assets:read` and `storage:read` on the key; a mapped ID works without them.
 - Collect results within 24 hours. Later, **Download Asset** can get a kept result with `assets:read`.
 
 See [workflow requirements](/docs/integrations#before-you-connect), [async jobs](/docs/api/async) and [asset retention](/docs/api/assets#files-and-records).

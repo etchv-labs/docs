@@ -110,6 +110,31 @@ An edit replaces all metadata and must send the asset’s current version. A `40
 
 </Details>
 
+## Traceable links
+
+Share one file so each recipient downloads their own watermarked copy. Scopes: `links:write` to create, estimate and revoke, `links:read` to read. Each copy costs one embed of the file.
+
+<Details title="Create, follow and revoke a link">
+
+```python
+link = client.create_link(
+    result.source_asset_id,  # the original of a file you watermarked
+    "Board pack, October",
+    recipients=["alex@example.com", "sam@example.com"],
+    download_limit=3,
+)
+print(link["url"])  # send this to your recipients
+
+for recipient in client.get_link(link["id"])["recipients"]:
+    print(recipient["email"], recipient["opened_at"], recipient["copy"]["status"])
+
+client.revoke_link(link["id"])
+```
+
+`estimate_link` takes the same arguments and reports the credits without creating the link. `list_links` and `list_link_events` page with `before=page["next_cursor"]`. When a detected file is one of your links' copies, the detection result's `copy` names the link and the recipient. [Links reference](/docs/api/links).
+
+</Details>
+
 ## Async jobs and webhooks
 
 To get a receipt without waiting for the result, use `submit_embed` / `submit_detection`. Media types: `images`, `documents`, `videos`.

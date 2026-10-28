@@ -27,16 +27,33 @@ with the watermark ID you saved when you embedded the file.
 | `watermark_id` | Recovered 64-character hex ID, or `null` |
 | `confidence` | How certain the read was, from 0 to 1, taken from the least certain unit |
 | `units` | For each frame or page (unit): `index`, `watermarked`, `confidence` and `watermark_id`; indexes start at zero |
+| `copy` | With `links:read`, or signed in to the dashboard: present when the watermark is on a copy one of your [traceable links](/docs/api/links) made: `asset_id` (the copy), `link` (`id`, `name`), `recipient` (the email it was made for) and `opened_at` (when they first opened the link, or `null`) |
+| `asset` | With `assets:read`, or signed in to the dashboard: present when the watermark is on another of your watermarked assets: `asset_id`, `name`, `metadata` and `created_at` |
+
+```json
+{
+  "watermarked": true,
+  "watermark_id": "9f2c…",
+  "confidence": 0.98,
+  "copy": {
+    "asset_id": "ast_…",
+    "link": { "id": "lnk_…", "name": "Q3 board deck" },
+    "recipient": "alice@acme.com",
+    "opened_at": "2026-10-03T14:22:05Z"
+  }
+}
+```
 
 ## Interpret the result
 
-- **Watermark matches:** look up the linked record in your system.
+- **Watermark matches:** `copy` names the recipient a traceable link made it for, and `asset` names the
+  asset in your library. Otherwise, look up the watermark ID in your own records.
 - **Watermark in only some units, or different watermarks:** check `units`. The top-level result is `watermarked: false` with a null `watermark_id`.
 - **No watermark found:** the detection still completed and is billed. It does not tell you whether an image is AI-generated.
 
 High confidence does not guarantee the exact watermark is recovered after edits. A match
 identifies a copy, not who shared it. Detection does not return your original JSON or create
-an asset-library record.
+an asset-library record. Only your Organization’s own copies and assets are ever named, and only to a key or app that may read them.
 
 <Details title="Recovery from edited or photographed copies">
 

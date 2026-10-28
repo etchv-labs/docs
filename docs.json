@@ -65,6 +65,29 @@
       ]
     },
     {
+      "title": "Guides",
+      "pages": [
+        {
+          "slug": "guides/traceable-links",
+          "file": "guides/traceable-links.mdx",
+          "title": "Traceable copies",
+          "description": "Send each recipient their own watermarked copy of a file from one link. Recipients confirm their email to download, and detection names whose copy leaked."
+        },
+        {
+          "slug": "guides/cloudinary",
+          "file": "guides/cloudinary.mdx",
+          "title": "Cloudinary",
+          "description": "Watermark Cloudinary uploads automatically. An open-source service receives each upload notification, watermarks the image and stores the copy back."
+        },
+        {
+          "slug": "guides/content-credentials",
+          "file": "guides/content-credentials.mdx",
+          "title": "Content Credentials",
+          "description": "Sign images with Content Credentials that name Etchv's watermark as a soft binding, and recover a copy's manifest from its watermark through the public C2PA resolver."
+        }
+      ]
+    },
+    {
       "title": "API reference",
       "pages": [
         {
@@ -84,6 +107,12 @@
           "file": "api/batches.mdx",
           "title": "Batches",
           "description": "Bulk watermarking API: watermark up to 100 images, PDFs or videos in one batch, each with its own data, then download each result or one zip."
+        },
+        {
+          "slug": "api/links",
+          "file": "api/links.mdx",
+          "title": "Traceable links",
+          "description": "Traceable links API: share one file so each recipient opens their own watermarked copy. Create, estimate, read and revoke links, and follow each open."
         },
         {
           "slug": "api/webhooks",

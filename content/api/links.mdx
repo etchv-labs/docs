@@ -1,0 +1,267 @@
+Share one file from your asset library with a traceable link. Each recipient
+confirms their email and downloads their own copy, watermarked with the link and
+their address. If a copy turns up somewhere it shouldn't,
+[detection](/docs/api/detect) names the recipient it was made for.
+
+<Facts>
+  <Fact label="Recipients">Up to 100 per link</Fact>
+  <Fact label="Expiry">Up to 30 days by default · up to 1 year</Fact>
+  <Fact label="Credits">One embed per copy</Fact>
+</Facts>
+
+## How a link works
+
+You create a link from a source asset, the original of a file you have
+[watermarked](/docs/api/embed) or uploaded, and send its `url` to your
+recipients yourself. Etchv does not send the link to your recipients.
+
+A recipient opens the `url`, enters their email and types the 8-digit code
+Etchv sends to it. Only then can they download their copy. The page gives the
+same answers for every address, so it never tells anyone who the link was
+shared with.
+
+Each copy is an ordinary embed of the source with this `data`:
+
+```json
+{"link_id": "lnk_5d0c2b7e9a4f4e1c8b3a6d2f0e9c7a51", "recipient": "alex@example.com"}
+```
+
+It is saved in your [asset library](/docs/api/assets) with the same pair as
+its metadata and the source as its parent.
+
+A link names who may open it in one of two ways:
+
+| Field | Who may open the link |
+| --- | --- |
+| `recipients` | Only these email addresses, up to 100 |
+| `allowed_domains` | Anyone with an email address at exactly one of these domains, up to 10 domains and 100 recipients. Subdomains are not included |
+
+Use a key with `links:write` to create and revoke links, and `links:read` to
+read them. In the dashboard, open an original in [Assets](/dashboard/assets)
+and choose **Share traceable copies**.
+
+## Create a link
+
+<Endpoint method="POST" path="/links" />
+
+```sh
+curl --fail-with-body https://api.etchv.com/links \
+  -H "X-API-Key: $ETCHV_API_KEY" \
+  -H 'Idempotency-Key: board-pack-2026-10' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "asset_id": "'"$SOURCE_ASSET_ID"'",
+    "name": "Board pack, October",
+    "recipients": ["alex@example.com", "sam@example.com"]
+  }'
+```
+
+| Field | Meaning |
+| --- | --- |
+| `asset_id` | A source asset (`kind` `source`). Use the `X-Source-Asset-ID` of an embed, or [list assets](/docs/api/assets#list-assets) with `kind=source` |
+| `name` | Up to 200 characters. Recipients see it on the page they open |
+| `recipients` | Recipients' email addresses. Give this or `allowed_domains` |
+| `allowed_domains` | Email domains, such as `example.com`, whose addresses may open the link. Each must match exactly |
+| `expires_at` | An ISO 8601 time with a time zone. Default 30 days from now, or the source file's expiry if that is sooner. At least five minutes away, at most a year, and no later than the source file's expiry |
+| `prepare` | When copies are made: `on_create` or `on_open`. See [When copies are made](#when-copies-are-made) |
+| `download_limit` | Downloads allowed per recipient, 1 to 100. Default unlimited |
+| `webhook_id` | A [webhook endpoint](/docs/api/webhooks) that receives `link.opened` and `link.locked` events |
+
+The response is `201` with the [link](#read-a-link). Etchv first checks that
+your workspace has the credits for every listed recipient's copy, or for one
+copy for a domain link. If not, it returns `402`, and no link exists. Its
+`detail` has `code` `insufficient_credits`, `estimated_credits` and
+`available_credits`.
+
+An `Idempotency-Key` of 8 to 128 letters, digits, hyphens or underscores is
+optional. A retry with the same key and body returns the same link with `200`;
+the same key with a different body returns `409`.
+
+| Status | Meaning |
+| --- | --- |
+| `400` | The `Idempotency-Key` is invalid |
+| `402` | Not enough credits, or no active plan or trial |
+| `403` | Your plan does not include the source's format |
+| `404` | The asset was not found, or the webhook endpoint was not found or is disabled |
+| `409` | The `Idempotency-Key` was used for a different link, or the asset's size is unknown; watermark the file again to share it |
+| `410` | The source file expired; watermark the file again to share it |
+| `422` | A field is invalid, the asset is not a source, or both or neither of `recipients` and `allowed_domains` were given |
+
+## Estimate the credits
+
+<Endpoint method="POST" path="/links/estimate" />
+
+Takes the same body as creating a link, runs the same checks and creates
+nothing. Use it to show the cost before you create the link.
+
+```json
+{
+  "asset_id": "ast_…",
+  "media_type": "document",
+  "prepare": "on_open",
+  "credits_per_copy": 4,
+  "estimated_credits": 8,
+  "available_credits": 1850,
+  "enough_credits": true,
+  "latest_expires_at": "2027-10-20T09:15:00+00:00"
+}
+```
+
+`estimated_credits` is `null` for a domain link, because nobody knows yet how
+many people will open it. `latest_expires_at` is the latest `expires_at` this
+link could have.
+
+## When copies are made
+
+| `prepare` | Copies are made | Default for |
+| --- | --- | --- |
+| `on_open` | When each recipient first opens the link | Images, PDFs of up to 5 pages, DOCX and PPTX. Always for `allowed_domains` |
+| `on_create` | All at once, as a [batch](/docs/api/batches), when the link is created | Video and PDFs over 5 pages |
+
+An `on_open` copy is made while the recipient waits on the page. If it isn't
+ready right away, Etchv also emails the recipient when it is. Long files
+default to `on_create`, so their copies are made in advance.
+`batch_id` names the batch making them.
+
+A copy costs the same credits as embedding the source yourself, at
+`credits_per_copy`, and is charged only when it is made. A copy that fails is
+refunded. A recipient who never opens an `on_open` link costs nothing.
+
+An `on_create` link's batch holds its copies' credits when the link is
+created. An `on_open` link's check holds nothing: each copy needs credits when
+its recipient opens the link, and a domain link is checked for one copy only,
+so keep enough credits until your recipients have opened it. While the
+workspace has too few, a recipient who opens the link gets no copy.
+
+## Read a link
+
+<Endpoint method="GET" path="/links/{link_id}" />
+
+```json
+{
+  "id": "lnk_5d0c2b7e9a4f4e1c8b3a6d2f0e9c7a51",
+  "url": "https://etchv.com/l/Yp3kQ8vN2rT6wX1zA4bC7d",
+  "name": "Board pack, October",
+  "asset_id": "ast_…",
+  "media_type": "document",
+  "status": "active",
+  "prepare": "on_open",
+  "allowed_domains": [],
+  "expires_at": "2026-11-26T14:02:00+00:00",
+  "download_limit": null,
+  "recipient_count": 2,
+  "credits_per_copy": 4,
+  "estimated_credits": 8,
+  "batch_id": null,
+  "webhook_id": null,
+  "created_at": "2026-10-27T14:02:00+00:00",
+  "revoked_at": null,
+  "recipients": [
+    {
+      "email": "alex@example.com",
+      "status": "opened",
+      "opened_at": "2026-10-27T15:10:41+00:00",
+      "last_opened_at": "2026-10-27T15:10:41+00:00",
+      "open_count": 1,
+      "download_count": 1,
+      "copy": {"status": "ready", "asset_id": "ast_…", "error_code": null}
+    },
+    {
+      "email": "sam@example.com",
+      "status": "not_opened",
+      "opened_at": null,
+      "last_opened_at": null,
+      "open_count": 0,
+      "download_count": 0,
+      "copy": {"status": "not_started", "asset_id": null, "error_code": null}
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `url` | The link to send. Anyone can open the page, but only a recipient can download |
+| `status` | `active`, `revoked`, `expired`, or `unavailable` when the source file was deleted or expired. An unavailable link makes no new copies; recipients whose copy is already made can still download it |
+| `recipients` | Each listed recipient. For a domain link, those who have opened it |
+| `recipients[].opened_at` | Their first open, after confirming their email |
+| `recipients[].copy.status` | `not_started`, `preparing`, `ready` or `failed` |
+| `recipients[].copy.asset_id` | Their watermarked copy in the asset library, once ready |
+
+## List links
+
+<Endpoint method="GET" path="/links" />
+
+Newest first, without `recipients`. `limit` is 1 to 50 (default 20). Pass
+`next_cursor` from one page as `before` to get the next; it is `null` on the
+last page. A `before` that names no link of yours returns `404`.
+
+```sh
+curl --fail-with-body "https://api.etchv.com/links?limit=20" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+## List opens and downloads
+
+<Endpoint method="GET" path="/links/{link_id}/events" />
+
+Newest first, with `limit` 1 to 100 (default 50). Pass `next_cursor` as
+`before` for the next page; an unknown `before` returns `400`.
+
+| Field | Meaning |
+| --- | --- |
+| `type` | `opened`, `downloaded`, or `locked` when too many wrong codes were tried |
+| `recipient` | The email, or `null` for `locked` |
+| `verified_by` | For `opened`: how the recipient proved their email, `email_code` |
+| `asset_id` | For `downloaded`: the copy downloaded |
+| `created_at` | When it happened |
+
+## Revoke a link
+
+<Endpoint method="POST" path="/links/{link_id}/revoke" />
+
+```sh
+curl --fail-with-body -X POST "https://api.etchv.com/links/$LINK_ID/revoke" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+New opens and downloads stop at once. `on_create` copies that haven't been
+queued yet are canceled and not charged; copies already queued finish. Copies
+already downloaded keep their watermark. Revoking again returns the link.
+
+## Webhook events
+
+Give `webhook_id` when creating a link to receive its events at a
+[webhook endpoint](/docs/api/webhooks), signed and retried like job events.
+
+| Event | Sent |
+| --- | --- |
+| `link.opened` | Each time a recipient opens the link. `first_open` is `true` for their first |
+| `link.locked` | Once, when the link stops taking codes until the next UTC day after too many wrong codes |
+
+```json
+{
+  "id": "evt_…",
+  "type": "link.opened",
+  "api_version": "2026-09-12",
+  "created_at": "2026-10-27T15:10:41+00:00",
+  "data": {
+    "link_id": "lnk_5d0c2b7e9a4f4e1c8b3a6d2f0e9c7a51",
+    "name": "Board pack, October",
+    "asset_id": "ast_…",
+    "recipient": "alex@example.com",
+    "opened_at": "2026-10-27T15:10:41+00:00",
+    "first_open": true,
+    "verified_by": "email_code"
+  }
+}
+```
+
+For `link.locked`, `data` has `link_id`, `name`, `asset_id`, `locked_until` and
+`reason` `too_many_wrong_codes`.
+
+## Find who a copy was made for
+
+[Detect](/docs/api/detect) the file with a key that has `watermarks:detect`
+and `links:read`. When the watermark is on one of your links' copies, the
+response's `copy` names the link, the recipient and when they first opened it.

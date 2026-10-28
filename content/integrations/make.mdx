@@ -35,3 +35,9 @@ With **Zip the results** on, **Download Batch Zip** gets every result as one zip
 Make modules send each request as one body, so Create Batch takes the files as a zip rather than uploading them one by one.
 
 See [shared workflow requirements](/docs/integrations#before-you-connect) and [async jobs](/docs/api/async).
+
+## Traceable links
+
+**Create Traceable Link** shares a file from your [asset library](/docs/api/assets) so each recipient opens their own watermarked copy. Map the original's `asset_id` (a source asset, such as `source_asset_id` from a watermark job), a name, and either recipients' email addresses or allowed domains, with an idempotency key. Add each address to **Recipients**, or each domain to **Allowed domains**.
+
+The step returns the link with its `url`; send it to your recipients in your own email or chat step, because Etchv does not send it. Each copy costs one embed of the file, charged when it is made. The key needs `links:write`. See [traceable links](/docs/api/links).

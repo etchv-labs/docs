@@ -25,6 +25,8 @@ curl https://api.etchv.com/watermarks/images/detect \
 | `webhooks:write` | Manage endpoints and redeliver events; owner/admin only |
 | `storage:read` | Inspect destinations, deliveries and downloads |
 | `storage:write` | Manage/verify connections, move results and retry delivery; owner/admin only |
+| `links:read` | Read [traceable links](/docs/api/links), their recipients and events, and see whose copy a detected file is |
+| `links:write` | Create, estimate and revoke traceable links |
 
 Each key belongs to one Organization. On every request, Etchv checks Organization
 membership, whether the key has expired or been revoked, and the key's permissions. To process files, your plan must include the format

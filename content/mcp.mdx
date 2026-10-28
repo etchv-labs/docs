@@ -48,6 +48,7 @@ Keep your key out of conversations. Other clients can use the same command, argu
 - “Watermark this PDF for delivery-42, keeping its text selectable.”
 - “Check this video for an Etchv watermark.”
 - “List my latest watermarked assets and download the one I choose.”
+- “Share the board pack with alex@example.com and sam@example.com so each gets their own copy, then tell me who has opened it.”
 - “Watermark every PDF in contracts/ with the file name as the recipient and save the results to delivered/.”
 
 ## Your first watermark
@@ -105,6 +106,8 @@ API limits and plan access still apply. Downloads can be up to 512 MiB and 10 mi
 | `list_assets`, `get_asset`, `download_asset` | `assets:read` |
 | `update_asset` | `assets:write` |
 | `delete_asset` | `assets:delete` + owner/admin |
+| `create_link`, `revoke_link` | `links:write` |
+| `list_links`, `get_link` | `links:read` |
 | `list_storage_destinations`, `list_storage_deliveries`, `get_storage_delivery` | `storage:read` |
 | `verify_storage_destination`, `store_asset`, `retry_storage_delivery` | `storage:write` + owner/admin |
 | `list_webhooks`, `list_webhook_deliveries` | `webhooks:read` |

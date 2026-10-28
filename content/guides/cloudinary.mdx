@@ -1,0 +1,79 @@
+You run the service on your own server. Cloudinary notifies it of each upload, and it stores the watermarked copy next to the original.
+
+```
+upload to Cloudinary ──notification──► your service ──► Etchv
+       ▲                                                 │
+       └──────── watermarked copy as <public_id>_etchv ◄─┘
+```
+
+The service is in the [Etchv integrations repository](https://github.com/etchv-labs/integrations/tree/main/cloudinary) under the MIT license.
+
+## What you get
+
+- The original stays as it was. The copy is stored as `<public_id>_etchv` in the same asset folder and tagged `etchv-watermarked`.
+- Etchv embeds `{"public_id": "<source public ID>", "delivery": "<reference>"}`. The copy's contextual metadata records `etchv_watermark_id` and `etchv_source`, so you can match a [detected watermark](/docs/api/detect) to the upload it came from.
+- Replacing the original watermarks the new version and replaces the copy. Deleting the original leaves the copy in place.
+- Public image uploads in JPEG, PNG, TIFF, PSD/PSB, GIF, BMP, PPM and WebP are watermarked, up to 50 MB. Each one uses the same credits as an [image embed](/docs/billing).
+
+## Run the service
+
+You need Node.js 24 (24.2 or later) and a host that can receive HTTPS requests from Cloudinary. The service serves plain HTTP, so put it behind your HTTPS proxy or platform.
+
+Set these environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `ETCHV_API_KEY` | An [API key](/dashboard/api-keys) with only the `watermarks:embed` scope |
+| `ETCHV_DELIVERY` | The delivery reference for uploads without a `delivery:` tag, such as `website` |
+| `CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | A Cloudinary API key that can upload |
+| `CLOUDINARY_API_SECRET` | Its API secret |
+| `CLOUDINARY_WEBHOOK_SECRET` | Optional. The secret of the key Cloudinary signs notifications with, if that's a different key (see below) |
+| `PORT` | Optional. The port to listen on (default `8080`) |
+
+Then start it:
+
+```bash
+git clone https://github.com/etchv-labs/integrations.git
+cd integrations
+npm install
+cd cloudinary
+npm start
+```
+
+The [service README](https://github.com/etchv-labs/integrations/tree/main/cloudinary#run-it) lists the other optional variables, such as SHA-256 signatures, a regional Cloudinary API host or another suffix for the copy.
+
+Keep both keys on the server. The service never logs them.
+
+## Connect Cloudinary
+
+Point an upload notification at the service's HTTPS URL:
+
+- **For all uploads:** in the Cloudinary Console, open **Settings → Webhook Notifications** and add a notification URL for the **Upload** event type. Keep the signature scheme at **default** or **legacy HMAC** and keep the default payload. The service verifies the `X-Cld-Signature` header, which the EdDSA-only scheme doesn't send.
+- **For some uploads:** pass `notification_url` in the upload call, or set it on an upload preset. Global notifications that aren't additive then don't also fire for that upload.
+
+Cloudinary signs notifications with the key chosen for signature verification on the same settings page, or your oldest active key if none is chosen. If that isn't the key in `CLOUDINARY_API_KEY`, set `CLOUDINARY_WEBHOOK_SECRET` to its secret. Otherwise every notification gets a `401`.
+
+To choose the delivery reference per upload, add a tag such as `delivery:partner-42`. Uploads without one use `ETCHV_DELIVERY`.
+
+Upload an image, then look for `<public_id>_etchv` in the same folder. To confirm the watermark, [detect](/docs/api/detect) it in the copy and compare the watermark ID with `etchv_watermark_id`.
+
+## Retries and failures
+
+Cloudinary waits 20 seconds for a response, then retries after about 3, 6 and 9 minutes. Each version of an upload maps to one [idempotency key](/docs/api/async#retry-safely), so a retry replays the same Etchv result instead of using more credits. The service keeps working after Cloudinary stops waiting, so run it where a request can continue for a few minutes.
+
+| Response | When | Cloudinary retries |
+| --- | --- | --- |
+| `200` | Watermarked; skipped (not a supported public image, already a copy, or replaced or deleted since); or failed in a way a retry can't fix, such as no credits left | No |
+| `401` | Missing, stale or invalid signature | Yes |
+| `413` | A notification larger than 1 MB | Yes |
+| `503` | A rate limit, timeout, network or server error at Etchv or Cloudinary | Yes |
+
+After a `200` failure, fix the cause and upload the image again.
+
+<Details title="Edge cases">
+- Before storing, the service checks the original's current version. If the original was replaced or deleted while Cloudinary was still retrying an older notification, nothing is stored. A replacement in the moment between that check and the upload can still leave a copy of the older version; upload the newer version again.
+- Restoring an earlier version from the Media Library isn't an upload, so the copy isn't updated. Upload the restored version again.
+- Uploads tagged `etchv-watermarked`, or whose public ID ends with the suffix, are skipped, so the service never watermarks its own copies. Pick a suffix your own public IDs don't use.
+- If your product environment has a default upload preset for API uploads, its incoming transformation also applies to the copy and can re-encode it.
+</Details>

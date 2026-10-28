@@ -18,7 +18,7 @@ curl https://api.etchv.com/webhooks \
 ```
 
 - Save the `signing_secret` from the `201` response. It is shown only once. The response also has `id`, `url`, `enabled` and `created_at`. The secret is separate from your API key.
-- Pass `?webhook_id=wh_…` when [submitting an async job](/docs/api/async), or `webhook_id` when [creating a batch](/docs/api/batches). Only jobs and batches that select this endpoint send events to it.
+- Pass `?webhook_id=wh_…` when [submitting an async job](/docs/api/async), or `webhook_id` when [creating a batch](/docs/api/batches) or a [link](/docs/api/links). Only jobs, batches and links that select this endpoint send events to it.
 - Verify each delivery, save its event ID and reply quickly.
 
 <Details title="Endpoint security and secret rotation">
@@ -41,6 +41,8 @@ To replace a lost secret or change it, create a new endpoint and use it in new r
 | `watermark.batch.failed` | A batch ended with no file watermarked; credits for failed files are refunded |
 | `watermark.batch.cancelled` | A canceled batch ended; files that did not run are not charged |
 | `accelerator.ready` | A requested [GPU wake-up](/docs/api/gpu#start-the-gpu) is ready |
+| `link.opened` | A recipient opened a [traceable link](/docs/api/links#webhook-events) |
+| `link.locked` | A traceable link stopped taking codes for the day after too many wrong ones |
 
 Job events report only the final outcome. A single failed attempt that is retried sends no failure event. The event, the job’s completion and the credit charge are saved together. A batch sends one event when it ends; the files in it send no job events.
 

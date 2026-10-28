@@ -117,6 +117,32 @@ An edit replaces all metadata and must send the asset’s current version. A `40
 
 </Details>
 
+## Traceable links
+
+Share one file so each recipient downloads their own watermarked copy. Scopes: `links:write` to create, estimate and revoke, `links:read` to read. Each copy costs one embed of the file.
+
+<Details title="Create, follow and revoke a link">
+
+```typescript
+const link = await client.createLink({
+  assetId: result.sourceAssetId!, // the original of a file you watermarked
+  name: 'Board pack, October',
+  recipients: ['alex@example.com', 'sam@example.com'],
+  downloadLimit: 3,
+});
+console.log(link.url); // send this to your recipients
+
+for (const recipient of (await client.getLink(link.id)).recipients) {
+  console.log(recipient.email, recipient.opened_at, recipient.copy.status);
+}
+
+await client.revokeLink(link.id);
+```
+
+`estimateLink` takes the same input and reports the credits without creating the link. `listLinks` and `listLinkEvents` page with `before: page.next_cursor`. When a detected file is one of your links' copies, the result's `copy` names the link and the recipient. [Links reference](/docs/api/links).
+
+</Details>
+
 ## Async jobs and webhooks
 
 To get a receipt without waiting for the result, use `submitEmbed` / `submitDetection`. Media types: `images`, `documents`, `videos`.

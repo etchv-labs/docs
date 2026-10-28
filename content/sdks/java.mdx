@@ -8,14 +8,14 @@ Maven:
 <dependency>
   <groupId>com.etchv</groupId>
   <artifactId>etchv-sdk</artifactId>
-  <version>1.4.0</version>
+  <version>1.5.0</version>
 </dependency>
 ```
 
 Gradle (Kotlin DSL):
 
 ```kotlin
-implementation("com.etchv:etchv-sdk:1.4.0")
+implementation("com.etchv:etchv-sdk:1.5.0")
 ```
 
 ## Embed a file
@@ -111,6 +111,31 @@ for (var item : page.items()) {
 ```
 
 An edit replaces the metadata and must send the asset's current version. A `409` conflict means the asset changed since you read it, so fetch it again and redo your edit. `deleteAsset` deletes one asset. `deleteAssets` deletes 1–50 assets as one action: either all are deleted or none are. [Asset fields, filters and retention](/docs/api/assets).
+
+</Details>
+
+## Traceable links
+
+Share one file so each recipient downloads their own watermarked copy. Scopes: `links:write` to create, estimate and revoke, `links:read` to read. Each copy costs one embed of the file.
+
+<Details title="Create, follow and revoke a link">
+
+```java
+var link = client.createLink(
+    result.sourceAssetId(), // the original of a file you watermarked
+    "Board pack, October",
+    EtchvClient.LinkOptions.recipients(List.of("alex@example.com", "sam@example.com"))
+        .withDownloadLimit(3));
+System.out.println(link.url()); // send this to your recipients
+
+for (var recipient : client.getLink(link.id()).recipients()) {
+    System.out.println(recipient.email() + " " + recipient.openedAt() + " " + recipient.copy().status());
+}
+
+client.revokeLink(link.id());
+```
+
+`estimateLink` takes the same arguments and reports the credits without creating the link. `listLinks` and `listLinkEvents` page with `before` set to the previous page's `nextCursor()`. When a detected file is one of your links' copies, the `DetectionResult`'s `copy()` names the link and the recipient. [Links reference](/docs/api/links).
 
 </Details>
 

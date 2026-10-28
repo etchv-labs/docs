@@ -4,7 +4,7 @@ Needs .NET 10. Create one `EtchvClient` and reuse it; it is safe to use from man
 
 ```sh
 # From your project folder: clone next to it, not inside it
-git clone --branch v1.4.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
+git clone --branch v1.5.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
 dotnet add reference ../etchv-csharp-sdk/src/Etchv/Etchv.csproj
 ```
 
@@ -103,6 +103,30 @@ foreach (var item in page.Items) {
 ```
 
 An edit replaces the metadata and must send the asset's current version. A `409` conflict means the asset changed since you read it, so fetch it again and redo your edit. `DeleteAssetAsync` deletes one asset. `DeleteAssetsAsync` deletes 1–50 assets as one action: either all are deleted or none are. [Asset fields, filters and retention](/docs/api/assets).
+
+</Details>
+
+## Traceable links
+
+Share one file so each recipient downloads their own watermarked copy. Scopes: `links:write` to create, estimate and revoke, `links:read` to read. Each copy costs one embed of the file.
+
+<Details title="Create, follow and revoke a link">
+
+```csharp
+var link = await client.CreateLinkAsync(new LinkRequest(
+    result.SourceAssetId!, // the original of a file you watermarked
+    "Board pack, October",
+    Recipients: ["alex@example.com", "sam@example.com"],
+    DownloadLimit: 3));
+Console.WriteLine(link.Url); // send this to your recipients
+
+foreach (var recipient in (await client.GetLinkAsync(link.Id)).Recipients)
+    Console.WriteLine($"{recipient.Email} {recipient.OpenedAt} {recipient.Copy.Status}");
+
+await client.RevokeLinkAsync(link.Id);
+```
+
+`EstimateLinkAsync` takes the same `LinkRequest` and reports the credits without creating the link. A workspace without the credits for the copies gets an `EtchvException` with status `402` and `Code` `insufficient_credits`. `ListLinksAsync` and `ListLinkEventsAsync` page with `before: page.NextCursor`. When a detected file is one of your links' copies, the `DetectionResult`'s `Copy` names the link and the recipient. [Links reference](/docs/api/links).
 
 </Details>
 

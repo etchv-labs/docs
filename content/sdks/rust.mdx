@@ -107,6 +107,33 @@ An edit replaces the metadata and must send the asset's current version. A `409`
 
 </Details>
 
+## Traceable links
+
+Share one file so each recipient downloads their own watermarked copy. Scopes: `links:write` to create, estimate and revoke, `links:read` to read. Each copy costs one embed of the file.
+
+<Details title="Create, follow and revoke a link">
+
+```rust
+use etchv::NewLink;
+
+// The original of a file you watermarked.
+let source = result.source_asset_id.as_deref().expect("source asset");
+let link = client.create_link(&NewLink::new(source, "Board pack, October")
+    .recipients(["alex@example.com", "sam@example.com"])
+    .download_limit(3))?;
+println!("{}", link.url); // send this to your recipients
+
+for recipient in client.get_link(&link.id)?.recipients {
+    println!("{} {:?} {}", recipient.email, recipient.opened_at, recipient.copy.status);
+}
+
+client.revoke_link(&link.id)?;
+```
+
+`estimate_link` takes the same `NewLink` and reports the credits without creating the link. `list_links` and `list_link_events` page with `before` set to the previous page's `next_cursor`. When a detected file is one of your links' copies, the detection result's `copy` names the link and the recipient. [Links reference](/docs/api/links).
+
+</Details>
+
 ## Async jobs and webhooks
 
 To start a job without waiting for the result, call `submit_embed` or `submit_detection`. You get a receipt back. Set the media type with `Media::Image`, `Media::Document` or `Media::Video`.

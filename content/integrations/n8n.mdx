@@ -27,3 +27,9 @@ Check it with **Get Batch Status** about once a minute until `status` is `comple
 The node holds every file of a batch in memory while it uploads them. On a small n8n instance, send large files in smaller batches.
 
 See [shared workflow requirements](/docs/integrations#before-you-connect) for file limits, reference data and safe retries.
+
+## Traceable links
+
+**Create Traceable Link** shares a file from your [asset library](/docs/api/assets) so each recipient opens their own watermarked copy. Map the original's `asset_id` (a source asset, such as `source_asset_id` from a watermark job), a name, and either recipients' email addresses or allowed domains, with an idempotency key. Separate several addresses or domains with commas or line breaks.
+
+The step returns the link with its `url`; send it to your recipients in your own email or chat step, because Etchv does not send it. Each copy costs one embed of the file, charged when it is made. The key needs `links:write`. See [traceable links](/docs/api/links).

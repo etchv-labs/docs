@@ -32,11 +32,11 @@ Returns `{ "items": [...], "next_cursor": "..." }`, newest first. Use the same f
 
 ## Authentication
 
-Send `X-API-Key` on every request, including downloads. A key can only reach assets in its own Organization.
+Send `X-API-Key` on every request, including downloads. The only exception is a [download link](/docs/api/assets#share-a-download-link). A key can only reach assets in its own Organization.
 
 | Scope | Access |
 | --- | --- |
-| `assets:read` | List, read and download |
+| `assets:read` | List, read, download and create download links |
 | `assets:write` | Rename and replace metadata |
 | `assets:delete` | Delete; requires an owner or admin |
 
@@ -73,7 +73,31 @@ curl --fail-with-body "https://api.etchv.com/assets/$ASSET_ID/content" \
   -H "X-API-Key: $ETCHV_API_KEY" --output saved-file.png
 ```
 
-Use your asset’s file extension. The response keeps its MIME type and includes a filename. Keep the API key on your server. A download URL alone gives no access.
+Use your asset’s file extension. The response keeps its MIME type and includes a filename. Keep the API key on your server. A `download_url` alone gives no access. To share a file without a key, create a download link.
+
+## Share a download link
+
+<Endpoint method="POST" path="/assets/{asset_id}/links" />
+
+```sh
+curl --request POST "https://api.etchv.com/assets/$ASSET_ID/links" \
+  -H "X-API-Key: $ETCHV_API_KEY" -H 'Content-Type: application/json' \
+  --data '{"expires_in":900}'
+```
+
+Returns `201` with `{ "url": "...", "expires_at": "..." }`. Anyone with the URL can download the file without an API key until it expires, so share it only with the person who needs the file. `expires_in` is 60–3600 seconds and defaults to 900.
+
+A link stops working before it expires when the asset is deleted, or when the key or membership that created it is revoked or expires. You can't revoke a single link. Revoke the key or delete the asset instead, so keep links short-lived.
+
+| Response when opened | Meaning |
+| --- | --- |
+| `403` | The link expired or was altered |
+| `401` | The key that created it, or its creator, is no longer active |
+| `404` | The asset was deleted, or the creator is no longer a member |
+| `410` | The Etchv-hosted file expired; also returned when you create the link |
+| `429` | Downloads through links count toward your Organization’s rate limit |
+
+Files in your own bucket can also return the [customer storage](/docs/api/assets#files-and-records) errors.
 
 ## Rename or update metadata
 
