@@ -108,6 +108,7 @@ API limits and plan access still apply. Downloads can be up to 512 MiB and 10 mi
 | `delete_asset` | `assets:delete` + owner/admin |
 | `create_link`, `revoke_link` | `links:write` |
 | `list_links`, `get_link` | `links:read` |
+| `delete_link`, `remove_link_recipient` | `links:write` + `assets:delete` + owner/admin |
 | `list_storage_destinations`, `list_storage_deliveries`, `get_storage_delivery` | `storage:read` |
 | `verify_storage_destination`, `store_asset`, `retry_storage_delivery` | `storage:write` + owner/admin |
 | `list_webhooks`, `list_webhook_deliveries` | `webhooks:read` |

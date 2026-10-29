@@ -4,7 +4,7 @@ Needs .NET 10. Create one `EtchvClient` and reuse it; it is safe to use from man
 
 ```sh
 # From your project folder: clone next to it, not inside it
-git clone --branch v1.5.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
+git clone --branch v1.6.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
 dotnet add reference ../etchv-csharp-sdk/src/Etchv/Etchv.csproj
 ```
 
@@ -126,7 +126,9 @@ foreach (var recipient in (await client.GetLinkAsync(link.Id)).Recipients)
 await client.RevokeLinkAsync(link.Id);
 ```
 
-`EstimateLinkAsync` takes the same `LinkRequest` and reports the credits without creating the link. A workspace without the credits for the copies gets an `EtchvException` with status `402` and `Code` `insufficient_credits`. `ListLinksAsync` and `ListLinkEventsAsync` page with `before: page.NextCursor`. When a detected file is one of your links' copies, the `DetectionResult`'s `Copy` names the link and the recipient. [Links reference](/docs/api/links).
+`EstimateLinkAsync` takes the same `LinkRequest` and reports the credits without creating the link. A workspace without the credits for the copies gets an `EtchvException` with status `402` and `Code` `insufficient_credits`. `ListLinksAsync` and `ListLinkEventsAsync` page with `before: page.NextCursor`. When a detected file is one of your links' copies, the `DetectionResult`'s `Copy` names the link and the recipient.
+
+`DeleteLinkAsync` deletes a link with every recipient's opens, downloads and copy. `RemoveLinkRecipientAsync` takes a recipient's `Id`, deletes their opens, downloads and copy, and returns the link without them. Neither can be undone, and detection no longer names a deleted recipient. Both need an owner or admin and, for an API key, `assets:delete` as well as `links:write`. [Links reference](/docs/api/links).
 
 </Details>
 

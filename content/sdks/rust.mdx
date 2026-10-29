@@ -130,7 +130,9 @@ for recipient in client.get_link(&link.id)?.recipients {
 client.revoke_link(&link.id)?;
 ```
 
-`estimate_link` takes the same `NewLink` and reports the credits without creating the link. `list_links` and `list_link_events` page with `before` set to the previous page's `next_cursor`. When a detected file is one of your links' copies, the detection result's `copy` names the link and the recipient. [Links reference](/docs/api/links).
+`estimate_link` takes the same `NewLink` and reports the credits without creating the link. `list_links` and `list_link_events` page with `before` set to the previous page's `next_cursor`. When a detected file is one of your links' copies, the detection result's `copy` names the link and the recipient.
+
+`delete_link` deletes a link with every recipient's opens, downloads and copy. `remove_link_recipient` takes a recipient's `id`, deletes their opens, downloads and copy, and returns the link without them. Neither can be undone, and detection no longer names a deleted recipient. Both need an owner or admin and, for an API key, `assets:delete` as well as `links:write`. [Links reference](/docs/api/links).
 
 </Details>
 

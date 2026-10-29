@@ -3,7 +3,7 @@ Needs Go 1.25 or later. Import the package as `etchv`. Create one client and reu
 ## Install
 
 ```sh
-go get github.com/etchv-labs/go-sdk@v1.5.0
+go get github.com/etchv-labs/go-sdk@v1.6.0
 ```
 
 ## Embed a file
@@ -135,7 +135,9 @@ for _, r := range link.Recipients {
 _, err = client.RevokeLink(ctx, link.ID)
 ```
 
-`EstimateLink` takes the same `LinkCreate` and reports the credits without creating the link. `ListLinks` and `ListLinkEvents` page with the previous page's `NextCursor`. When a detected file is one of your links' copies, the detection result's `Copy` names the link and the recipient. [Links reference](/docs/api/links).
+`EstimateLink` takes the same `LinkCreate` and reports the credits without creating the link. `ListLinks` and `ListLinkEvents` page with the previous page's `NextCursor`. When a detected file is one of your links' copies, the detection result's `Copy` names the link and the recipient.
+
+`DeleteLink` deletes a link with every recipient's opens, downloads and copy. `RemoveLinkRecipient` takes a recipient's `ID`, deletes their opens, downloads and copy, and returns the link without them. Neither can be undone, and detection no longer names a deleted recipient. Both need an owner or admin and, for an API key, `assets:delete` as well as `links:write`. [Links reference](/docs/api/links).
 
 </Details>
 

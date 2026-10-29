@@ -37,7 +37,10 @@ A link names who may open it in one of two ways:
 | `allowed_domains` | Anyone with an email address at exactly one of these domains, up to 10 domains and 100 recipients. Subdomains are not included |
 
 Use a key with `links:write` to create and revoke links, and `links:read` to
-read them. In the dashboard, open an original in [Assets](/dashboard/assets)
+read them. [Deleting a link](/docs/api/links#delete-a-link) or
+[removing a recipient](/docs/api/links#remove-a-recipient) also deletes copies
+from your asset library, so it takes `assets:delete` too, and the owner or
+admin role. In the dashboard, open an original in [Assets](/dashboard/assets)
 and choose **Share traceable copies**.
 
 ## Create a link
@@ -184,6 +187,7 @@ workspace has too few, a recipient who opens the link gets no copy.
 | `url` | The link to send. Anyone can open the page, but only a recipient can download |
 | `status` | `active`, `revoked`, `expired`, or `unavailable` when the source file was deleted or expired. An unavailable link makes no new copies; recipients whose copy is already made can still download it |
 | `recipients` | Each listed recipient. For a domain link, those who have opened it |
+| `recipients[].id` | Names the recipient to [remove](/docs/api/links#remove-a-recipient) |
 | `recipients[].opened_at` | Their first open, after confirming their email |
 | `recipients[].copy.status` | `not_started`, `preparing`, `ready` or `failed` |
 | `recipients[].copy.asset_id` | Their watermarked copy in the asset library, once ready |
@@ -228,6 +232,38 @@ curl --fail-with-body -X POST "https://api.etchv.com/links/$LINK_ID/revoke" \
 New opens and downloads stop at once. `on_create` copies that haven't been
 queued yet are canceled and not charged; copies already queued finish. Copies
 already downloaded keep their watermark. Revoking again returns the link.
+
+## Delete a link
+
+<Endpoint method="DELETE" path="/links/{link_id}" />
+
+```sh
+curl --fail-with-body -X DELETE "https://api.etchv.com/links/$LINK_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+Returns `204`. The link stops at once, as on a revoke, and is deleted with
+every recipient's opens, downloads and copy. A copy already being made
+finishes and is then deleted. Copies already downloaded keep their watermark,
+but [detection](/docs/api/links#find-who-a-copy-was-made-for) no longer names
+who received them. This can't be undone, and the link's `Idempotency-Key`
+can't create it again. Deleting again also returns `204`.
+
+## Remove a recipient
+
+<Endpoint method="DELETE" path="/links/{link_id}/recipients/{recipient_id}" />
+
+```sh
+curl --fail-with-body -X DELETE \
+  "https://api.etchv.com/links/$LINK_ID/recipients/$RECIPIENT_ID" \
+  -H "X-API-Key: $ETCHV_API_KEY"
+```
+
+Deletes one recipient's opens, downloads and copy, for example when they ask
+you to erase their data, and returns the link without them. They can no longer
+open the link, on a domain link too. A copy not started yet isn't charged; one
+already preparing finishes and is then deleted. Detection no longer names
+them. This can't be undone.
 
 ## Webhook events
 

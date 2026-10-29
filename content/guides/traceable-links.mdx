@@ -74,7 +74,11 @@ open and downloads, or give `webhook_id` to receive a
 
 [Revoke](/docs/api/links#revoke-a-link) the link when you no longer want
 anyone to open it. Links also expire: by default 30 days after creation, or
-sooner if the source file expires first.
+sooner if the source file expires first. Revoking and expiry keep the link's
+records. To erase them, [delete the link](/docs/api/links#delete-a-link), or
+[remove one recipient](/docs/api/links#remove-a-recipient) when someone asks
+you to erase their data. Either deletes their copies too, and detection then
+no longer names who received them.
 
 ## Trace a leaked copy
 

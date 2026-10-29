@@ -8,14 +8,14 @@ Maven:
 <dependency>
   <groupId>com.etchv</groupId>
   <artifactId>etchv-sdk</artifactId>
-  <version>1.5.0</version>
+  <version>1.6.0</version>
 </dependency>
 ```
 
 Gradle (Kotlin DSL):
 
 ```kotlin
-implementation("com.etchv:etchv-sdk:1.5.0")
+implementation("com.etchv:etchv-sdk:1.6.0")
 ```
 
 ## Embed a file
@@ -135,7 +135,9 @@ for (var recipient : client.getLink(link.id()).recipients()) {
 client.revokeLink(link.id());
 ```
 
-`estimateLink` takes the same arguments and reports the credits without creating the link. `listLinks` and `listLinkEvents` page with `before` set to the previous page's `nextCursor()`. When a detected file is one of your links' copies, the `DetectionResult`'s `copy()` names the link and the recipient. [Links reference](/docs/api/links).
+`estimateLink` takes the same arguments and reports the credits without creating the link. `listLinks` and `listLinkEvents` page with `before` set to the previous page's `nextCursor()`. When a detected file is one of your links' copies, the `DetectionResult`'s `copy()` names the link and the recipient.
+
+`deleteLink` deletes a link with every recipient's opens, downloads and copy. `removeLinkRecipient` takes a recipient's `id()`, deletes their opens, downloads and copy, and returns the link without them. Neither can be undone, and detection no longer names a deleted recipient. Both need an owner or admin and, for an API key, `assets:delete` as well as `links:write`. [Links reference](/docs/api/links).
 
 </Details>
 
