@@ -50,13 +50,17 @@ Detection returns the watermark it found, a confidence score, and results for ea
 
 <Details title="Client configuration">
 
-`Client::with_options(key, base_url, Duration)` sets the base URL and the timeout. The default timeout is 120 seconds. Use `Options::new().filename(...).idempotency_key(...)` on each media request. The examples below assume you already have a client.
+`Client::with_options(key, base_url, Duration)` sets the base URL and the timeout. The default timeout is 120 seconds. Use `Options::new().filename(...).idempotency_key(...)` on each media request. On detection, `.keep_result(false)` asks the API to keep no copy of the result (it keeps it 24 hours by default, so a retry gets it back). The examples below assume you already have a client.
 
 </Details>
 
 ## Retries and recovery
 
-Embedding and video detection retry and check job status for you. Image and document detection do not. Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
+Embedding and video detection retry and check job status for you. Image and document detection, downloads and in-memory batch archives retry a dropped connection. Detection resends with the same idempotency key, and the API returns the first result at no extra charge.
+
+It keeps that result for 24 hours; pass `keep_result(false)` to keep nothing, and a retry then runs detection again at no charge, uploading the file again if it went through an upload. The detection requests stay within one client timeout counted from the first send; the new upload is bounded like any upload. Errors carry the idempotency key so you can resend.
+
+Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
 
 | Situation | Action |
 | --- | --- |

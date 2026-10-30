@@ -4,7 +4,7 @@ Needs .NET 10. Create one `EtchvClient` and reuse it; it is safe to use from man
 
 ```sh
 # From your project folder: clone next to it, not inside it
-git clone --branch v1.6.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
+git clone --branch v1.7.0 https://github.com/etchv-labs/csharp-sdk.git ../etchv-csharp-sdk
 dotnet add reference ../etchv-csharp-sdk/src/Etchv/Etchv.csproj
 ```
 
@@ -45,13 +45,17 @@ Detection returns the watermark it found, a confidence score, and results for ea
 
 `new EtchvClient(key, baseUrl, timeout, httpClient)` sets the timeout and an optional `HttpClient`. The default timeout is 120 seconds. If you use your own HTTP handler, it must turn off redirects.
 
-Every operation takes a `CancellationToken`. Cancelling raises `OperationCanceledException`. Use `RequestOptions(Filename: ..., IdempotencyKey: ...)` for media requests. The examples below assume you already have a client.
+Every operation takes a `CancellationToken`. Cancelling raises `OperationCanceledException`. Use `RequestOptions(Filename: ..., IdempotencyKey: ...)` for media requests; for image and document detection, `KeepResult = false` asks the API to keep no copy of the result. The examples below assume you already have a client.
 
 </Details>
 
 ## Retries and recovery
 
-Embedding and video detection retry and check job status for you. Image and document detection do not. Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
+Embedding and video detection retry and check job status for you. Image and document detection, downloads and batch archives retry a dropped connection. Detection resends with the same idempotency key, and the API returns the first result at no extra charge.
+
+It keeps that result for 24 hours; set `KeepResult = false` on `RequestOptions` to keep nothing, and a retry then runs detection again at no charge, uploading a large file again first. The detection requests stay within one client timeout counted from the first send; the new upload is bounded like any upload. An `EtchvException` from detection carries its `IdempotencyKey`.
+
+Before you upload, save an [idempotency key](/docs/api/async#retry-safely) (a value you choose so a retry isn't run twice). With it, you can recover the request even after your program restarts.
 
 | Situation | Action |
 | --- | --- |
