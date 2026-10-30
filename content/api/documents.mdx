@@ -156,7 +156,7 @@ each unit must meet 35 dB PSNR.
 ## Billing and results
 
 - **Embed:** one CPU credit per PDF page, so an eight-page PDF costs 8. A DOCX or PPTX costs one credit per watermark unit: each page or slide background picture and each image. If the request fails, the reserved credits are refunded.
-- **Detect:** one CPU credit per file, whatever its page count. A PDF over 32 pages is detected as a job: the response is its result when it finishes in time, otherwise a `202` receipt. `units` reports each PDF page, or each DOCX/PPTX unit with its `part` name. For a PDF, the top-level watermark ID is present only when Etchv finds the same watermark on every page; for a DOCX or PPTX, on every unit that carries one, so images added later do not hide it.
+- **Detect:** one CPU credit per file, whatever its page count. A PDF over 32 pages is detected as a job: the response is its result when it finishes in time, otherwise a `202` receipt. A detection answered in the request can be [sent again](/docs/api/detect#send-a-request-again) with its `Idempotency-Key` at no extra charge. `units` reports each PDF page, or each DOCX/PPTX unit with its `part` name. For a PDF, the top-level watermark ID is present only when Etchv finds the same watermark on every page; for a DOCX or PPTX, on every unit that carries one, so images added later do not hide it.
 - **Retrieve:** [job results](/docs/api/async) last 24 hours. A retry with the same [idempotency key](/docs/api/async#retry-safely) returns the saved file without another charge.
 
 ## SDKs

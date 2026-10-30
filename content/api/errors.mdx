@@ -8,7 +8,7 @@ Use the HTTP status and the JSON `detail` field to handle a failure. Save the `X
 | `402` · Billing | Check the plan, credit balance and pending reservations |
 | `403` · Access | Check [scopes](/docs/authentication), membership, [formats](/docs/billing) and [GPU eligibility](/docs/api/gpu) |
 | `404` · Not found | Check the ID in the request (asset, job, webhook or destination) and the Organization |
-| `409` · Conflict | Check idempotency inputs or reload a stale asset version |
+| `409` · Conflict | Check idempotency inputs or reload a stale asset version. A resent detection’s `code` says why: [send a request again](/docs/api/detect#send-a-request-again) |
 | `410` · Unavailable result | Check the asset library; the file may be expired or deleted |
 | `413` · Too large | Reduce file size, dimensions or frame count |
 | `415` · Unsupported format | Convert to a supported format |

@@ -65,6 +65,27 @@ Test the edits your workflow produces.
 
 </Details>
 
+## Send a request again
+
+If a response never arrives (a dropped connection, for example), send the same request
+again with the same `Idempotency-Key` header (8–128 letters, digits, `-` or `_`). A resend
+with the same key and the same file is never charged again.
+
+| Situation | Response |
+| --- | --- |
+| Default (`keep_result` omitted or `true`) | The first request’s result, kept for 24 hours, with the same `X-Request-ID` and `Idempotent-Replayed: true` |
+| `keep_result=false` on the first request | Nothing is kept, so the file is detected again, free, up to 5 times within 24 hours |
+| The first request is still running | `409` with `code` `request_in_progress`, or `upload_in_use` when you send the same `upload_id`; wait (`Retry-After` seconds when given) and send it again |
+| The first request failed | `409` with `code` `request_failed`; it was refunded, so send it with a new key |
+| After 24 hours or 5 re-runs, or a first request that never finished | `409` with `code` `replay_expired`; send it with a new key |
+| A different file with the same key | `409` |
+
+With a [large-file upload](/docs/api/uploads), send the same `upload_id` again. If nothing
+was kept, Etchv needs the file again: that resend returns `409` `upload_consumed`, so upload
+the file again and send its new `upload_id` with the same key. A PDF over 32 pages is detected
+as a job whatever `keep_result` says: a resend returns that job, as for an
+[async request](/docs/api/async).
+
 ## Choose sync or async
 
 | Choice | How to request it |
