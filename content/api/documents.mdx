@@ -138,10 +138,10 @@ The watermark is carried in units:
   with the watermark. Slides with the same background share one. A gradient background
   becomes a picture of the gradient.
 - **Images.** Every JPEG, PNG, GIF, BMP or TIFF image of at least 64 pixels on each side
-  is watermarked in its own format. Smaller images, animations and vector graphics are
-  unchanged. A JPEG that holds more images after the photo, such as an HDR gain map,
-  becomes a JPEG of the photo alone, as for [image uploads](/docs/api/embed#native-format-preservation).
-  Stereo, multi-angle and panorama JPEGs are unchanged.
+  is watermarked in its own format. Smaller images, animations, GIFs over 1 MP, stereo,
+  multi-angle and panorama JPEGs, and vector graphics are unchanged, and the rest of the
+  document is still watermarked. A JPEG that holds more images after the photo, such as an
+  HDR gain map, becomes a JPEG of the photo alone, as for [image uploads](/docs/api/embed#native-format-preservation).
 
 Text, tables, fields, tracked changes, comments, notes, animations and layouts are
 unchanged. Etchv must detect the exact watermark in every unit of the final file, and
