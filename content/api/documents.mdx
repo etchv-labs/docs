@@ -127,7 +127,7 @@ recovery.
 | Files | DOCX and PPTX (Office Open XML); not macro-enabled, templates, slide shows or password-protected |
 | Upload / output / detection | 20 MB / 100 MB / 95 MB in one request, 100 MB through a [large-file upload](/docs/api/uploads) |
 | Watermark units | Up to 128 page or slide watermarks and images, 40 MP in total |
-| Slide backgrounds | Solid colors, pictures and linear gradients; pattern fills, tiled pictures and path gradients are not supported yet |
+| Slide backgrounds | Solid colors, pictures and linear gradients; pattern fills, tiled pictures and path gradients are not supported yet, and a stereo, multi-angle or panorama JPEG background is refused |
 
 The watermark is carried in units:
 
@@ -139,7 +139,9 @@ The watermark is carried in units:
   becomes a picture of the gradient.
 - **Images.** Every JPEG, PNG, GIF, BMP or TIFF image of at least 64 pixels on each side
   is watermarked in its own format. Smaller images, animations and vector graphics are
-  unchanged.
+  unchanged. A JPEG that holds more images after the photo, such as an HDR gain map,
+  becomes a JPEG of the photo alone, as for [image uploads](/docs/api/embed#native-format-preservation).
+  Stereo, multi-angle and panorama JPEGs are unchanged.
 
 Text, tables, fields, tracked changes, comments, notes, animations and layouts are
 unchanged. Etchv must detect the exact watermark in every unit of the final file, and

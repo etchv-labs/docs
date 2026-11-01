@@ -86,9 +86,11 @@ Etchv reads the format from the file’s bytes, not its name. High-bit-depth and
 <Details title="Encoding, color and transparency">
 
 - JPEG: quality 100, 4:4:4 chroma. WebP: lossless. TIFF: lossless Deflate.
+- Some phone and camera JPEGs hold more images after the photo, such as an HDR gain map or previews. Etchv returns the watermarked photo alone as a JPEG: the other images are dropped, so they don't stay unwatermarked in the file. An HDR photo then shows as a standard photo. Detection reads the photo. Stereo, multi-angle and panorama JPEGs are refused, because their other views would be lost.
 - Palette and grayscale inputs may expand to RGB. GIF frames must be at most 1 MP.
 - 1-bit PNG, BMP, GIF and TIFF images expand to RGB. Line art and scanned text carry a watermark; a photo dithered to black-and-white dots usually cannot, and the request fails and its credit is refunded.
 - RGB ICC profiles, EXIF and resolution are preserved where supported; other metadata is not guaranteed.
+- Embedded thumbnails of the original are removed rather than left unwatermarked: the EXIF thumbnail, and in PSD and PSB files Photoshop's thumbnail and any XMP thumbnails. If a camera stored its own preview inside its maker notes, those maker notes are removed; otherwise they're kept unchanged, like the rest of the EXIF.
 - RGBA transparency is preserved. Verification composites onto white; fully transparent frames cannot carry a watermark.
 - Encoding settings and file bytes may change. The final image must score at least 35 dB PSNR (a standard measure of how close it looks to the original), including loss from encoding.
 
