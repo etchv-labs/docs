@@ -77,10 +77,11 @@ In 10-bit video the watermark is in the upper 8 bits of each sample and the sour
 finer bits are kept. ProRes 4444 and XQ are delivered with 10-bit color and alpha, so
 a 12-bit source keeps its upper 10 bits.
 
-Color tags, audio packets and timing are copied and checked. In MPEG program streams,
-audio stays within one frame of its original position relative to the video. Container
-metadata is copied where supported, but not byte-for-byte. Editing, transcoding or
-recompression can affect recovery.
+Color tags, timing and audio are copied and checked: audio keeps its bytes, frames,
+trims and timing. In MPEG program streams, the audio as a whole stays within one video
+frame of its original position relative to the video, and each audio frame within one
+more audio frame. Container metadata is copied where supported, but not byte-for-byte.
+Editing, transcoding or recompression can affect recovery.
 
 </Details>
 
