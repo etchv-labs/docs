@@ -50,14 +50,15 @@ and for a PDF, `active_content` ([scripts and actions](#scripts-and-actions)).
 
 Text stays searchable and selectable. Everything else stays as it was: fonts,
 vectors, page sizes, links, bookmarks, form fields and their values, annotations,
-attachments, scripts and metadata. The watermark is two small textures drawn over
-each page, which add about 25 KB per page (rarely up to 48 KB). Editing the layout or removing those
+attachments, scripts and metadata. Only page thumbnails, small pictures of the
+original pages, are removed; viewers draw their own. The watermark is two small
+textures drawn over each page, which add about 25 KB per page (rarely up to 48 KB). Editing the layout or removing those
 textures can affect recovery.
 
 <Details title="Forms, signatures, encryption and large pages">
 
 - **Forms:** fields and their values are unchanged and stay fillable. The watermark is in the page content underneath them.
-- **Digital signatures:** the watermark is added as an incremental update after the signed revision, so existing signatures stay valid for what was signed. PDF viewers show that the document changed after signing. A signed PDF that is also encrypted, or that has to be repaired before it opens, is written again instead, and its signatures no longer verify.
+- **Digital signatures:** the watermark is added as an incremental update after the signed revision, so existing signatures stay valid for what was signed. PDF viewers show that the document changed after signing. The signed revision underneath keeps everything it had, page thumbnails included. A signed PDF that is also encrypted, or that has to be repaired before it opens, is written again instead, and its signatures no longer verify.
 - **Encryption:** a PDF with only an owner (permissions) password is watermarked and keeps its encryption and permissions; your owner password still works.
 - **Annotations:** notes, stamps, highlights and other annotations are retained and do not receive their own watermark.
 - **Very large pages:** a page above 4 megapixels at 144 dpi, such as a map or a poster, is watermarked and detected at a proportionally lower resolution.
@@ -144,8 +145,9 @@ The watermark is carried in units:
   HDR gain map, becomes a JPEG of the photo alone, as for [image uploads](/docs/api/embed#native-format-preservation).
 
 Text, tables, fields, tracked changes, comments, notes, animations and layouts are
-unchanged. Etchv must detect the exact watermark in every unit of the final file, and
-each unit must meet 35 dB PSNR.
+unchanged. The file's preview thumbnail, a picture of the original's first page or
+slide, is removed; Word and PowerPoint save a new one. Etchv must detect the exact
+watermark in every unit of the final file, and each unit must meet 35 dB PSNR.
 
 <Callout title="Detection reads the file">
   Detect a DOCX or PPTX by uploading the file. Its page and slide pictures and its
