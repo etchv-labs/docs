@@ -91,7 +91,7 @@ Etchv reads the format from the file’s bytes, not its name. High-bit-depth and
 - 1-bit PNG, BMP, GIF and TIFF images expand to RGB. Line art and scanned text carry a watermark; a photo dithered to black-and-white dots usually cannot, and the request fails and its credit is refunded.
 - RGB ICC profiles, EXIF and resolution are preserved where supported; other metadata is not guaranteed.
 - Embedded thumbnails of the original are removed rather than left unwatermarked: the EXIF thumbnail, and in PSD and PSB files Photoshop's thumbnail and any XMP thumbnails. If a camera stored its own preview inside its maker notes, those maker notes are removed; otherwise they're kept unchanged, like the rest of the EXIF.
-- RGBA transparency is preserved. Verification composites onto white; fully transparent frames cannot carry a watermark.
+- RGBA transparency is preserved. Verification composites onto white, so the watermark is carried by the visible pixels. Fully transparent frames cannot carry one, and a mostly transparent image, such as a few lines of text on a clear background, may not; the request then fails and its credit is refunded.
 - Encoding settings and file bytes may change. The final image must score at least 35 dB PSNR (a standard measure of how close it looks to the original), including loss from encoding.
 
 </Details>

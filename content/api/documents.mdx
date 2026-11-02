@@ -143,11 +143,14 @@ The watermark is carried in units:
   multi-angle and panorama JPEGs, and vector graphics are unchanged, and the rest of the
   document is still watermarked. A JPEG that holds more images after the photo, such as an
   HDR gain map, becomes a JPEG of the photo alone, as for [image uploads](/docs/api/embed#native-format-preservation).
+  A mostly transparent image that cannot carry the watermark within the quality limit,
+  such as a few lines of text on a clear background, is also left unchanged, as long as
+  the page or slide pictures and every other image carry it.
 
 Text, tables, fields, tracked changes, comments, notes, animations and layouts are
 unchanged. The file's preview thumbnail, a picture of the original's first page or
 slide, is removed; Word and PowerPoint save a new one. Etchv must detect the exact
-watermark in every unit of the final file, and each unit must meet 35 dB PSNR.
+watermark in every unit it watermarks in the final file, and each unit must meet 35 dB PSNR.
 
 <Callout title="Detection reads the file">
   Detect a DOCX or PPTX by uploading the file. Its page and slide pictures and its
